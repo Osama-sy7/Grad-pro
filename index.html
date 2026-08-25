@@ -120,30 +120,8 @@ select.custom-select option {
 </head>
 <body class="text-slate-800 antialiased" oncontextmenu="return false;">
 
-<!-- شاشة تسجيل دخول Firebase (البريد وكلمة المرور) -->
-<div id="authOverlay" class="fixed inset-0 z-[101] flex items-center justify-center p-4 bg-slate-900 dark:bg-slate-950">
-  <div class="card-3d w-full max-w-xs p-6 text-center space-y-4 shadow-2xl border-sky-300">
-    <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-sky-500 to-blue-600 text-white flex items-center justify-center mx-auto text-3xl shadow-lg shadow-sky-500/30">
-      <i class="fas fa-shield-halved"></i>
-    </div>
-    <div>
-      <h2 class="font-black text-lg text-slate-800 dark:text-slate-100">دخول مصرح به فقط</h2>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">سجّل دخول بالبريد الإلكتروني المصرح لك به</p>
-    </div>
-    <div class="space-y-3">
-      <input id="authEmailInput" type="email" placeholder="البريد الإلكتروني" class="w-full text-center text-sm font-bold border border-sky-200 dark:border-slate-700 rounded-2xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-sky-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
-      <input id="authPasswordInput" type="password" placeholder="كلمة المرور" class="w-full text-center text-sm font-bold border border-sky-200 dark:border-slate-700 rounded-2xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-sky-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
-      <button id="authLoginBtn" class="w-full btn-3d-blue text-white font-extrabold py-3 rounded-2xl text-xs">
-        <i class="fas fa-spinner fa-spin hidden" id="authLoginSpinner"></i>
-        <span id="authLoginBtnText">تسجيل الدخول</span>
-      </button>
-      <p id="authErrorMsg" class="text-[10px] text-red-500 font-bold hidden"></p>
-    </div>
-  </div>
-</div>
-
 <!-- شاشة تسجيل الدخول -->
-<div id="loginOverlay" class="hidden fixed inset-0 z-[100] items-center justify-center p-4 bg-slate-900 dark:bg-slate-950">
+<div id="loginOverlay" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900 dark:bg-slate-950">
   <div class="card-3d w-full max-w-xs p-6 text-center space-y-4 shadow-2xl border-sky-300">
     <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-sky-500 to-blue-600 text-white flex items-center justify-center mx-auto text-3xl shadow-lg shadow-sky-500/30">
       <i class="fas fa-cubes-stacked"></i>
@@ -155,7 +133,6 @@ select.custom-select option {
     <div class="space-y-3">
       <input id="pinInput" type="password" maxlength="8" placeholder="••••" class="w-full text-center text-2xl font-bold tracking-widest border border-sky-200 dark:border-slate-700 rounded-2xl py-3 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-sky-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
       <button id="loginBtn" class="w-full btn-3d-blue text-white font-extrabold py-3 rounded-2xl text-xs">تسجيل الدخول</button>
-      <button id="switchAccountBtn" class="w-full text-[10px] text-slate-400 font-bold underline">تسجيل خروج من الحساب المصرح به</button>
     </div>
   </div>
 </div>
@@ -528,7 +505,6 @@ select.custom-select option {
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, push, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 document.addEventListener('keydown', function(e) {
   if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C' || e.key === 'a' || e.key === 'A' || e.key === 'u' || e.key === 'U')) {
@@ -559,7 +535,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const auth = getAuth(app);
 
 let allItems = [], categories = [], history = [], workers = [], currentCategoryFilter = "all", historyFilter = null, currentUserRole = null, currentWorkerName = "";
 let adminPin = "777";
@@ -595,70 +570,6 @@ function dialog(msg, title="تنبيه", type="info", confirm=false, cb=null){
   if(confirm){ $("dlgYes").onclick = () => { closeDialog(); cb && cb(); }; $("dlgNo").onclick = closeDialog; }
   else $("dlgOk").onclick = closeDialog; }
 function closeDialog(){ $("customDialog").classList.add("hidden"); $("customDialog").classList.remove("flex"); }
-
-/* =========================================================
-   بوابة Firebase Authentication (بريد + كلمة مرور)
-   الحسابات تُضاف يدوياً فقط من كونسول Firebase من قبلك،
-   لا يوجد أي كود بالتطبيق يسمح لأي حد يسجل حساب لحاله.
-   ========================================================= */
-function showAuthOverlay(){
-  $("authOverlay").classList.remove("hidden");
-  $("authOverlay").classList.add("flex");
-  $("loginOverlay").classList.add("hidden");
-  $("loginOverlay").classList.remove("flex");
-}
-function hideAuthOverlay(){
-  $("authOverlay").classList.add("hidden");
-  $("authOverlay").classList.remove("flex");
-  $("loginOverlay").classList.remove("hidden");
-  $("loginOverlay").classList.add("flex");
-}
-
-onAuthStateChanged(auth, user => {
-  if(user){
-    hideAuthOverlay();
-  } else {
-    showAuthOverlay();
-  }
-});
-
-$("authLoginBtn").onclick = async () => {
-  const email = $("authEmailInput").value.trim();
-  const password = $("authPasswordInput").value;
-  $("authErrorMsg").classList.add("hidden");
-
-  if(!email || !password) return toast("يرجى إدخال البريد وكلمة المرور", "warning");
-
-  $("authLoginSpinner").classList.remove("hidden");
-  $("authLoginBtnText").textContent = "جاري التحقق...";
-
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    $("authEmailInput").value = "";
-    $("authPasswordInput").value = "";
-    toast("تم التحقق من الحساب بنجاح");
-  } catch(err) {
-    let msg = "تعذر تسجيل الدخول، تحقق من البيانات";
-    if(err.code === "auth/invalid-credential" || err.code === "auth/wrong-password") msg = "البريد أو كلمة المرور غير صحيحة";
-    else if(err.code === "auth/user-not-found") msg = "هذا البريد غير مصرح له بالدخول";
-    else if(err.code === "auth/too-many-requests") msg = "محاولات كثيرة، حاول لاحقاً";
-    else if(err.code === "auth/invalid-email") msg = "صيغة البريد غير صحيحة";
-    $("authErrorMsg").textContent = msg;
-    $("authErrorMsg").classList.remove("hidden");
-  } finally {
-    $("authLoginSpinner").classList.add("hidden");
-    $("authLoginBtnText").textContent = "تسجيل الدخول";
-  }
-};
-
-$("authPasswordInput").addEventListener("keydown", e => { if(e.key === "Enter") $("authLoginBtn").click(); });
-
-$("switchAccountBtn").onclick = () => {
-  dialog("سيتم تسجيل الخروج من حساب البريد المصرح به بالكامل من هذا الجهاز، هل تريد المتابعة؟", "تسجيل خروج كامل", "warning", true, async () => {
-    await signOut(auth);
-    toast("تم تسجيل الخروج من الحساب");
-  });
-};
 
 onValue(ref(db, ".info/connected"), snap => {
   const isOnline = snap.val() === true && navigator.onLine;
@@ -839,7 +750,6 @@ $("closeBlockedModalBtn").onclick = () => {
 $("logoutBtn").onclick = () => {
   displayedItemsLimit = 30;
   $("loginOverlay").classList.remove("hidden");
-  $("loginOverlay").classList.add("flex");
 };
 
 function navigate(page, title) {
