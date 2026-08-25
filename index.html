@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>نظام إدارة المستودعات الذكي PRO</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Cairo', 'sans-serif'] },
+        colors: { 
+          primary: {
+            50: '#f0f9ff',
+            100: '#e0f2fe',
+            500: '#0284c7',
+            600: '#0284c7',
+            700: '#0369a1',
+            800: '#075985',
+          }
+        }
+      }
+    }
+  };
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<!-- تم استبدال مكتبة الإكسيل بمكتبة تدعم الألوان والتخطيط -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+*{box-sizing:border-box; touch-action: manipulation;}
+body {
+  font-family: 'Cairo', sans-serif;
+  background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 50%, #f8fafc 100%);
+  font-size: 13px;
+  -webkit-user-select: none;
+  user-select: none;
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+  overflow-x: hidden;
+}
+body.dark {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+}
+
+.card-3d {
+  background: #ffffff;
+  border: 1px solid #bae6fd;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px -4px rgba(2, 132, 199, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: all 0.2s ease;
+}
+.dark .card-3d {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.4);
+}
+
+.btn-3d-blue {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+  border-bottom: 3px solid #0369a1;
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25);
+}
+.btn-3d-blue:active {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+
+.btn-3d-red {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+  border-bottom: 3px solid #b91c1c;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.25);
+}
+.btn-3d-red:active {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+
+.nav-item.active {
+  background: linear-gradient(90deg, #e0f2fe 0%, #ffffff 100%);
+  color: #0369a1;
+  font-weight: 800;
+  border-right: 5px solid #0284c7;
+}
+.dark .nav-item.active {
+  background: linear-gradient(90deg, #0c4a6e 0%, #1e293b 100%);
+  color: #7dd3fc;
+  border-right-color: #38bdf8;
+}
+
+.page-section{display:none}.page-section.active{display:block}
+.toast{animation:slideIn .25s ease}@keyframes slideIn{from{transform:translateY(-12px);opacity:0}to{transform:none;opacity:1}}
+.modal-backdrop{backdrop-filter:blur(8px); background: rgba(15, 23, 42, 0.75);}
+
+select.custom-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230284c7' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left 0.75rem center;
+  background-size: 1.1em;
+  padding-left: 2.2rem;
+}
+select.custom-select option {
+  background-color: #ffffff;
+  color: #0f172a;
+  padding: 8px;
+}
+.dark select.custom-select option {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+</style>
+</head>
+<body class="text-slate-800 antialiased" oncontextmenu="return false;">
+
+<!-- شاشة تسجيل دخول Firebase (البريد وكلمة المرور) -->
+<div id="authOverlay" class="fixed inset-0 z-[101] flex items-center justify-center p-4 bg-slate-900 dark:bg-slate-950">
+  <div class="card-3d w-full max-w-xs p-6 text-center space-y-4 shadow-2xl border-sky-300">
+    <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-sky-500 to-blue-600 text-white flex items-center justify-center mx-auto text-3xl shadow-lg shadow-sky-500/30">
+      <i class="fas fa-shield-halved"></i>
+    </div>
+    <div>
+      <h2 class="font-black text-lg text-slate-800 dark:text-slate-100">دخول مصرح به فقط</h2>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">سجّل دخول بالبريد الإلكتروني المصرح لك به</p>
+    </div>
+    <div class="space-y-3">
+      <input id="authEmailInput" type="email" placeholder="البريد الإلكتروني" class="w-full text-center text-sm font-bold border border-sky-200 dark:border-slate-700 rounded-2xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-sky-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+      <input id="authPasswordInput" type="password" placeholder="كلمة المرور" class="w-full text-center text-sm font-bold border border-sky-200 dark:border-slate-700 rounded-2xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-sky-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+      <button id="authLoginBtn" class="w-full btn-3d-blue text-white font-extrabold py-3 rounded-2xl text-xs">
+        <i class="fas fa-spinner fa-spin hidden" id="authLoginSpinner"></i>
+        <span id="authLoginBtnText">تسجيل الدخول</span>
+      </button>
+      <p id="authErrorMsg" class="text-[10px] text-red-500 font-bold hidden"></p>
+    </div>
+  </div>
+</div>
+
+<!-- شاشة تسجيل الدخول -->
+<div id="loginOverlay" class="hidden fixed inset-0 z-[100] items-center justify-center p-4 bg-slate-900 dark:bg-slate-950">
+  <div class="card-3d w-full max-w-xs p-6 text-center space-y-4 shadow-2xl border-sky-300">
+    <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-sky-500 to-blue-600 text-white flex items-center justify-center mx-auto text-3xl shadow-lg shadow-sky-500/30">
+      <i class="fas fa-cubes-stacked"></i>
+    </div>
+    <div>
+      <h2 class="font-black text-lg text-slate-800 dark:text-slate-100">مستودعي الذكي PRO</h2>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">أدخل كود الدخول للمتابعة</p>
+    </div>
+    <div class="space-y-3">
+      <input id="pinInput" type="password" maxlength="8" placeholder="••••" class="w-full text-center text-2xl font-bold tracking-widest border border-sky-200 dark:border-slate-700 rounded-2xl py-3 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-sky-50/50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+      <button id="loginBtn" class="w-full btn-3d-blue text-white font-extrabold py-3 rounded-2xl text-xs">تسجيل الدخول</button>
+      <button id="switchAccountBtn" class="w-full text-[10px] text-slate-400 font-bold underline">تسجيل خروج من الحساب المصرح به</button>
+    </div>
+  </div>
+</div>
+
+<!-- الهيدر -->
+<header class="bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-sky-100 dark:border-slate-700 sticky top-0 z-40 p-3 flex justify-between items-center shadow-sm">
+  <div class="flex items-center gap-2">
+    <button id="menuBtn" class="text-slate-700 dark:text-slate-200 text-lg p-1.5 hover:bg-sky-50 dark:hover:bg-slate-700 rounded-xl transition"><i class="fas fa-bars"></i></button>
+    <button id="headerBackBtn" class="hidden w-8 h-8 rounded-full bg-sky-100 dark:bg-slate-700 text-sky-800 dark:text-slate-100 items-center justify-center transition shadow-sm" title="رجوع">
+      <i class="fas fa-arrow-right text-xs"></i>
+    </button>
+  </div>
+  
+  <h1 id="pageTitle" class="font-black text-sm text-sky-900 dark:text-slate-100 truncate max-w-[150px]">الرئيسية</h1>
+  
+  <div class="flex items-center gap-1.5">
+    <div id="connectionStatus" class="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-sm transition-all duration-300">
+      <span id="statusDot" class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+      <span id="statusText">متصل</span>
+    </div>
+    <span id="roleBadge" class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300">مدير</span>
+    <button id="logoutBtn" class="text-slate-400 hover:text-red-500 text-sm p-1" title="تسجيل الخروج"><i class="fas fa-right-from-bracket"></i></button>
+  </div>
+</header>
+
+<!-- القائمة الجانبية -->
+<div id="sidebarOverlay" class="hidden fixed inset-0 bg-black/40 z-40"></div>
+<aside id="sidebar" class="fixed top-0 right-0 h-full w-72 max-w-[85%] bg-white dark:bg-slate-800 z-50 translate-x-full transition-transform duration-300 shadow-2xl flex flex-col justify-between">
+  <div>
+    <div class="p-4 border-b border-sky-100 dark:border-slate-700 flex items-center gap-3 bg-gradient-to-r from-sky-50 to-white dark:from-slate-900 dark:to-slate-800">
+      <div class="bg-sky-500 text-white p-2.5 rounded-2xl text-lg shadow-md shadow-sky-500/30"><i class="fas fa-warehouse"></i></div>
+      <div>
+        <b class="text-xs block text-sky-950 dark:text-slate-100 font-black">إدارة المستودع الذكي</b>
+        <p class="text-[10px] text-sky-600 dark:text-slate-400">تحكم كامل بالأقسام والأصناف</p>
+      </div>
+    </div>
+    <nav class="p-2 space-y-1">
+      <button data-page="home" data-title="الرئيسية" class="nav-item admin-only active w-full p-2.5 rounded-xl text-right flex items-center gap-3 dark:text-slate-200"><i class="fas fa-house text-sky-600 w-5"></i> الرئيسية</button>
+      <button data-page="categories" data-title="إدارة الأقسام" class="nav-item admin-only w-full p-2.5 rounded-xl text-right flex items-center gap-3 dark:text-slate-200"><i class="fas fa-layer-group text-sky-600 w-5"></i> إدارة الأقسام</button>
+      <button data-page="items" data-title="جميع الأصناف" class="nav-item w-full p-2.5 rounded-xl text-right flex items-center gap-3 dark:text-slate-200"><i class="fas fa-boxes-stacked text-sky-600 w-5"></i> جميع الأصناف</button>
+      <button data-page="import" data-title="استيراد صورة" class="nav-item admin-only w-full p-2.5 rounded-xl text-right flex items-center gap-3 dark:text-slate-200"><i class="fas fa-camera text-sky-600 w-5"></i> استيراد صورة</button>
+      <button data-page="history" data-title="سجل المراجعات" class="nav-item admin-only w-full p-2.5 rounded-xl text-right flex items-center gap-3 dark:text-slate-200"><i class="fas fa-clock-rotate-left text-sky-600 w-5"></i> سجل المراجعات</button>
+      <button data-page="recycle" data-title="سلة المحذوفات" class="nav-item admin-only w-full p-2.5 rounded-xl text-right flex items-center gap-3 dark:text-slate-200"><i class="fas fa-trash text-sky-600 w-5"></i> سلة المحذوفات</button>
+      <button data-page="reports" data-title="تقارير الجرد" class="nav-item w-full p-2.5 rounded-xl text-right flex items-center gap-3 dark:text-slate-200"><i class="fas fa-chart-pie text-sky-600 w-5"></i> تقارير الجرد</button>
+    </nav>
+  </div>
+
+  <div class="p-3 border-t border-sky-100 dark:border-slate-700 bg-sky-50/50 dark:bg-slate-900/50">
+    <button id="settingsToggleBtn" class="w-full p-2.5 rounded-xl text-right flex items-center justify-between text-slate-700 dark:text-slate-200 font-bold text-xs">
+      <span class="flex items-center gap-2"><i class="fas fa-gear text-sky-600 w-5"></i> الإعدادات والصلاحيات</span>
+      <i id="settingsChevron" class="fas fa-chevron-up text-xs transition-transform duration-200"></i>
+    </button>
+    <div id="settingsSubMenu" class="hidden space-y-1 mt-2 pt-2 border-t border-sky-100 dark:border-slate-800">
+      <button id="openWorkersModalBtn" class="admin-only w-full p-2 rounded-lg text-right flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-slate-700">
+        <i class="fas fa-users-gear text-sky-600 w-4"></i> إدارة العمال والحظر
+      </button>
+      <button id="openPinsModalBtn" class="admin-only w-full p-2 rounded-lg text-right flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-slate-700">
+        <i class="fas fa-key text-sky-600 w-4"></i> تغيير كود الأدمن
+      </button>
+      <button id="darkModeToggleBtn" class="w-full p-2 rounded-lg text-right flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-slate-700">
+        <span class="flex items-center gap-2"><i class="fas fa-moon text-sky-600 w-4"></i> الوضع الليلي</span>
+        <span id="darkModeStatus" class="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">مُعطل</span>
+      </button>
+      <button id="openClearAppDataModalBtn" class="admin-only w-full p-2 rounded-lg text-right flex items-center gap-2 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">
+        <i class="fas fa-triangle-exclamation text-red-500 w-4"></i> مسح كافة البيانات
+      </button>
+    </div>
+  </div>
+</aside>
+
+<main class="p-2.5 max-w-5xl mx-auto pb-12 space-y-3">
+
+<!-- الرئيسية -->
+<section id="home" class="page-section active space-y-3">
+  <div class="bg-gradient-to-l from-sky-600 via-blue-600 to-sky-500 rounded-2xl p-4 text-white shadow-lg shadow-sky-500/20 relative overflow-hidden">
+    <div class="relative z-10">
+      <p class="text-sky-100 text-[11px] font-bold">لوحة التحكم الفائقة</p>
+      <h2 class="text-lg font-black mt-0.5">مرحباً بك مجدداً 👋</h2>
+      <p id="currentDateDisplay" class="text-[11px] mt-1 text-sky-100 opacity-90"></p>
+    </div>
+    <i class="fas fa-cubes absolute -left-4 -bottom-4 text-6xl text-white/10 rotate-12"></i>
+  </div>
+
+  <div class="card-3d p-3 space-y-2">
+    <div class="flex items-center gap-2">
+      <i class="fas fa-magnifying-glass text-sky-600 text-sm"></i>
+      <b class="text-xs dark:text-slate-100 font-bold">بحث شامل في كافة الأقسام</b>
+    </div>
+    <div class="relative">
+      <input id="globalSearchInput" class="w-full bg-sky-50/50 dark:bg-slate-900 border border-sky-200 dark:border-slate-700 rounded-xl py-2 pr-8 pl-3 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="ابحث باسم الصنف أو القسم...">
+      <i class="fas fa-search absolute right-2.5 top-2.5 text-slate-400 text-xs"></i>
+    </div>
+    <div id="globalSearchResults" class="hidden overflow-x-auto mt-2">
+      <table class="w-full text-right text-xs">
+        <thead class="bg-sky-100/60 dark:bg-slate-900 text-sky-900 dark:text-slate-300 font-bold">
+          <tr>
+            <th class="p-1.5 w-8 text-center">#</th>
+            <th class="p-1.5">الصنف</th>
+            <th class="p-1.5">القسم</th>
+            <th class="p-1.5">الكمية</th>
+          </tr>
+        </thead>
+        <tbody id="globalSearchTableBody" class="divide-y divide-sky-100 dark:divide-slate-700"></tbody>
+      </table>
+      <div id="emptyGlobalSearch" class="text-center py-3 text-slate-400 text-xs hidden">لا توجد نتائج مطابقة</div>
+    </div>
+  </div>
+
+  <div id="statsGrid" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
+
+  <div class="card-3d p-3">
+    <div class="flex justify-between items-center border-b border-sky-100 dark:border-slate-700 pb-2">
+      <div><b class="text-xs dark:text-slate-100 font-black">آخر التغييرات</b></div>
+      <button data-page="history" data-title="سجل المراجعات" class="go-history text-sky-600 dark:text-sky-400 text-[11px] font-extrabold">عرض الكل</button>
+    </div>
+    <div id="homeRecent" class="divide-y divide-sky-100 dark:divide-slate-700 text-xs"></div>
+  </div>
+</section>
+
+<!-- إدارة الأقسام -->
+<section id="categories" class="page-section space-y-3">
+  <div class="card-3d p-3 flex justify-between items-center">
+    <div>
+      <h2 class="font-black text-xs dark:text-slate-100">أقسام المستودع</h2>
+      <p class="text-[10px] text-slate-500">قم بإنشاء وتخصيص الأقسام</p>
+    </div>
+    <button id="openAddCategoryModalBtn" class="btn-3d-blue text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">
+      <i class="fas fa-plus"></i><span>قسم جديد</span>
+    </button>
+  </div>
+
+  <div id="categoriesListGrid" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+</section>
+
+<!-- الأصناف -->
+<section id="items" class="page-section space-y-2.5">
+  <div class="flex gap-1.5">
+    <div class="relative flex-1">
+      <input id="searchInput" class="w-full bg-white dark:bg-slate-900 border border-sky-200 dark:border-slate-700 rounded-xl py-2 pr-8 pl-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="ابحث عن صنف...">
+      <i class="fas fa-search absolute right-2.5 top-2.5 text-slate-400 text-xs"></i>
+    </div>
+    <button id="openAddModalBtn" class="btn-3d-blue text-white px-3 rounded-xl font-bold text-xs flex items-center gap-1 shrink-0"><i class="fas fa-plus"></i><span>إضافة صنف</span></button>
+    <button id="deleteAllItemsBtn" class="admin-only bg-red-50 dark:bg-red-950/50 hover:bg-red-100 text-red-600 border border-red-200 dark:border-red-800 px-2.5 rounded-xl font-bold text-xs flex items-center gap-1 shrink-0">
+      <i class="fas fa-trash-alt"></i><span>مسح</span>
+    </button>
+  </div>
+
+  <div id="categoryFilterContainer" class="flex gap-1 overflow-x-auto pb-1 scrollbar-none"></div>
+
+  <div class="card-3d overflow-hidden p-2">
+    <div class="space-y-2" id="itemsCompactList"></div>
+    <div id="loadMoreContainer" class="text-center py-3 hidden">
+      <button id="loadMoreBtn" class="btn-3d-blue text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
+        <i class="fas fa-spinner fa-spin hidden ml-1" id="loadMoreSpinner"></i>
+        <span>عرض المزيد (+30 صنف)</span>
+      </button>
+      <p id="displayedItemsCount" class="text-[10px] text-slate-400 mt-1.5 font-bold"></p>
+    </div>
+    <div id="emptyItemsState" class="hidden text-center py-6 text-slate-400 text-xs">لا توجد أصناف مطابقة</div>
+  </div>
+</section>
+
+<!-- استيراد صورة -->
+<section id="import" class="page-section space-y-3">
+  <div class="card-3d p-4 text-center space-y-2">
+    <div class="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center mx-auto text-2xl"><i class="fas fa-camera"></i></div>
+    <h3 class="font-extrabold text-xs dark:text-slate-100">استيراد نص من صورة</h3>
+    <input id="cameraInput" type="file" accept="image/*" class="hidden">
+    <button id="uploadImageTrigger" class="w-full border-2 border-dashed border-sky-400 bg-sky-50/50 dark:bg-slate-900 rounded-xl p-3 font-bold text-xs text-sky-700 dark:text-sky-300">اختيار صورة</button>
+    <p id="ocrStatus" class="text-xs text-sky-600 font-bold hidden"><i class="fas fa-spinner fa-spin ml-1"></i> جاري قراءة واستخراج النص من الصورة...</p>
+  </div>
+  <div class="card-3d p-3 space-y-2">
+    <div>
+      <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">إضافة إلى قسم:</label>
+      <select id="bulkCategorySelect" class="custom-select w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 text-xs bg-sky-50/50 dark:bg-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"></select>
+    </div>
+    <textarea id="bulkInputText" class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 text-xs h-28 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white dark:bg-slate-900 dark:text-slate-100" placeholder="كل صنف في سطر..."></textarea>
+    <button id="saveBulkBtn" class="w-full btn-3d-blue text-white py-2 rounded-xl font-bold text-xs">إضافة الكافة</button>
+  </div>
+</section>
+
+<!-- سجل المراجعات -->
+<section id="history" class="page-section space-y-3">
+  <div class="card-3d p-3 space-y-2">
+    <label class="text-xs text-slate-500 block">اختر التاريخ</label>
+    <div class="flex gap-1.5">
+      <input id="historyDate" type="date" class="flex-1 border border-sky-200 dark:border-slate-700 rounded-xl p-1.5 text-xs bg-white dark:bg-slate-900 dark:text-slate-100">
+      <button id="todayHistoryBtn" class="bg-sky-100 text-sky-800 px-3 py-1.5 rounded-xl text-xs font-bold">اليوم</button>
+      <button id="clearHistoryFilter" class="btn-3d-blue text-white px-3 py-1.5 rounded-xl text-xs font-bold">الكل</button>
+    </div>
+  </div>
+  <div class="card-3d p-2">
+    <div class="flex justify-end p-1.5 border-b border-sky-100 dark:border-slate-700">
+      <button id="clearHistoryBtn" class="bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-[10px] font-bold"><i class="fas fa-trash"></i> مسح السجل بالكامل</button>
+    </div>
+    <div id="historyList" class="divide-y divide-sky-100 dark:divide-slate-700"></div>
+    <div id="emptyHistory" class="text-center py-6 text-slate-400 text-xs hidden">لا توجد عمليات مسجلة</div>
+  </div>
+</section>
+
+<!-- سلة المحذوفات -->
+<section id="recycle" class="page-section space-y-3">
+  <div class="card-3d p-3 flex justify-between items-center">
+    <div><b class="dark:text-slate-100 text-xs">سلة المحذوفات</b><p class="text-[10px] text-slate-500"><span id="deletedCount">0</span> صنف</p></div>
+    <i class="fas fa-trash text-red-500 text-lg"></i>
+  </div>
+  <div class="card-3d p-2">
+    <div class="flex justify-end p-1.5 border-b border-sky-100 dark:border-slate-700">
+      <button id="clearRecycleBtn" class="bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-[10px] font-bold"><i class="fas fa-trash"></i> تفريغ السلة</button>
+    </div>
+    <div id="recycleList" class="divide-y divide-sky-100 dark:divide-slate-700"></div>
+    <div id="emptyRecycleState" class="text-center py-6 text-slate-400 text-xs hidden">السلة فارغة</div>
+  </div>
+</section>
+
+<!-- تقارير الجرد -->
+<section id="reports" class="page-section space-y-3">
+  <div class="card-3d p-3 text-center">
+    <h2 class="font-black text-sm dark:text-slate-100">تقارير جرد المستودع</h2>
+    <p id="reportDate" class="text-[10px] text-slate-500 mt-0.5"></p>
+    
+    <div class="flex flex-wrap justify-center gap-1.5 mt-2 pb-2 border-b border-sky-100 dark:border-slate-700">
+      <button id="btnPrint" class="admin-only border border-sky-200 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[11px] font-bold"><i class="fas fa-print"></i> طباعة</button>
+      <button id="pdfBtn" class="border border-red-200 px-2.5 py-1 rounded-lg bg-red-50 text-red-600 text-[11px] font-bold"><i class="fas fa-file-pdf"></i> PDF</button>
+      <button id="excelBtn" class="admin-only border border-emerald-200 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-[11px] font-bold"><i class="fas fa-file-excel"></i> Excel</button>
+      <button id="waBtn" class="border border-green-200 px-2.5 py-1 rounded-lg bg-green-50 text-green-600 text-[11px] font-bold"><i class="fab fa-whatsapp"></i> واتساب</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-2">
+    <div class="card-3d p-2.5 text-center"><p class="text-[10px] text-slate-500">إجمالي الأصناف</p><b id="repTotalItems" class="text-base block mt-0.5 dark:text-slate-100">0</b></div>
+    <div class="card-3d p-2.5 text-center"><p class="text-[10px] text-slate-500">إجمالي الكميات</p><b id="repTotalQty" class="text-base block mt-0.5 dark:text-slate-100">0</b></div>
+  </div>
+
+  <div id="reportsCategoryTables" class="space-y-2.5"></div>
+</section>
+
+</main>
+
+<!-- نافذة تنبيه الحظر -->
+<div id="blockedWorkerModal" class="hidden fixed inset-0 z-[110] items-center justify-center p-4 modal-backdrop">
+  <div class="card-3d w-full max-w-xs p-6 text-center space-y-3 shadow-2xl border-red-200 bg-white dark:bg-slate-900">
+    <div class="w-14 h-14 rounded-full bg-red-100 text-red-500 flex items-center justify-center mx-auto text-2xl">
+      <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <div>
+      <h3 class="font-extrabold text-base text-slate-800 dark:text-slate-100">تنبيه الحظر</h3>
+      <p id="blockedWorkerMsg" class="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed"></p>
+    </div>
+    <button id="closeBlockedModalBtn" class="w-full btn-3d-blue text-white py-2.5 rounded-xl font-extrabold text-xs mt-2">حسناً</button>
+  </div>
+</div>
+
+<!-- نافذة إدارة العمال والحظر -->
+<div id="workersModal" class="hidden fixed inset-0 z-[65] items-center justify-center p-4 modal-backdrop">
+  <div class="card-3d w-full max-w-sm overflow-hidden p-0">
+    <div class="bg-sky-600 text-white p-3 flex justify-between items-center"><b class="text-xs"><i class="fas fa-users-gear ml-1"></i> إدارة أجهزة العمال والحظر</b><button id="closeWorkersModalBtn" class="text-base"><i class="fas fa-times"></i></button></div>
+    <div class="p-3 space-y-2 text-xs">
+      <div class="flex gap-1.5">
+        <input id="workerNameInput" type="text" placeholder="اسم العامل (مثلاً: أحمد)" class="flex-1 border border-sky-200 dark:border-slate-700 rounded-xl p-2 text-xs bg-white dark:bg-slate-900 dark:text-slate-100">
+        <input id="workerCodeInput" type="text" maxlength="6" placeholder="الكود" class="w-20 border border-sky-200 dark:border-slate-700 rounded-xl p-2 text-center font-bold text-xs bg-white dark:bg-slate-900 dark:text-slate-100">
+        <button id="addWorkerBtn" class="btn-3d-blue text-white px-3 rounded-xl font-bold text-xs shrink-0">إضافة</button>
+      </div>
+      <div class="border-t border-sky-100 dark:border-slate-700 pt-2">
+        <b class="text-[11px] block mb-1">قائمة العمال والأجهزة المسجلة:</b>
+        <div id="workersList" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة إضافة / تعديل قسم -->
+<div id="categoryModal" class="hidden fixed inset-0 z-[65] items-center justify-center p-4 modal-backdrop">
+  <div class="card-3d w-full max-w-sm overflow-hidden p-0">
+    <div class="bg-sky-600 text-white p-3 flex justify-between items-center"><b id="categoryModalTitle" class="text-xs">قسم جديد</b><button id="closeCategoryModalBtn" class="text-base"><i class="fas fa-times"></i></button></div>
+    <div class="p-3 space-y-2 text-xs">
+      <input type="hidden" id="editCategoryId">
+      <div><label class="font-bold block mb-1 dark:text-slate-200">اسم القسم</label><input id="categoryNameInput" class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 bg-white dark:bg-slate-900 dark:text-slate-100"></div>
+    </div>
+    <div class="p-2.5 bg-sky-50 dark:bg-slate-900 flex gap-2"><button id="saveCategoryBtn" class="flex-1 btn-3d-blue text-white py-1.5 rounded-xl font-bold text-xs">حفظ</button><button id="cancelCategoryModalBtn" class="flex-1 border dark:border-slate-700 bg-white dark:bg-slate-800 py-1.5 rounded-xl font-bold text-xs">إلغاء</button></div>
+  </div>
+</div>
+
+<!-- نافذة إضافة / تعديل صنف -->
+<div id="addModal" class="hidden fixed inset-0 z-[60] items-center justify-center p-4 modal-backdrop">
+  <div class="card-3d w-full max-w-md overflow-hidden p-0 max-h-[90vh] flex flex-col">
+    <div class="bg-sky-600 text-white p-3 flex justify-between items-center shrink-0"><b id="modalTitle" class="text-xs">إضافة صنف</b><button id="closeAddModalBtn" class="text-base"><i class="fas fa-times"></i></button></div>
+    
+    <div class="p-3 space-y-2.5 text-xs overflow-y-auto flex-1">
+      <input type="hidden" id="editItemId">
+      <div>
+        <label class="font-bold block mb-1 dark:text-slate-200">القسم</label>
+        <select id="itemCategorySelect" class="custom-select w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2.5 bg-sky-50/50 dark:bg-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"></select>
+      </div>
+      <div>
+        <label class="font-bold block mb-1 dark:text-slate-200">اسم الصنف</label>
+        <input id="itemName" class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 bg-white dark:bg-slate-900 dark:text-slate-100">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="font-bold block mb-1 dark:text-slate-200">الكمية</label>
+          <input id="itemQty" type="number" min="0" placeholder="0" class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 bg-white dark:bg-slate-900 dark:text-slate-100">
+        </div>
+        <div>
+          <label class="font-bold block mb-1 dark:text-slate-200">وحدة القياس</label>
+          <input id="itemUnit" type="text" placeholder="عدد، كغ..." class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 bg-white dark:bg-slate-900 dark:text-slate-100">
+        </div>
+      </div>
+      <div class="admin-only">
+        <label class="font-bold block mb-1 dark:text-slate-200">التاريخ والوقت</label>
+        <input id="operationDateTime" type="datetime-local" class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 bg-white dark:bg-slate-900 dark:text-slate-100">
+      </div>
+    </div>
+
+    <div class="p-2.5 bg-sky-50 dark:bg-slate-900 flex gap-2 shrink-0">
+      <button id="saveItemBtn" class="flex-1 btn-3d-blue text-white py-2 rounded-xl font-bold text-xs">حفظ</button>
+      <button id="cancelAddModalBtn" class="flex-1 border dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-200 py-2 rounded-xl font-bold text-xs">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- تغيير كود الأدمن -->
+<div id="pinsModal" class="hidden fixed inset-0 z-[65] items-center justify-center p-4 modal-backdrop">
+  <div class="card-3d w-full max-w-sm overflow-hidden p-0">
+    <div class="bg-sky-600 text-white p-3 flex justify-between items-center"><b class="text-xs"><i class="fas fa-key ml-1"></i> تغيير كود الأدمن</b><button id="closePinsModalBtn" class="text-base"><i class="fas fa-times"></i></button></div>
+    <div class="p-3 space-y-2 text-xs">
+      <div>
+        <label class="font-bold block mb-1 dark:text-slate-200">كود الأدمن الرئيسي</label>
+        <input id="adminPinInput" type="text" maxlength="8" class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 text-center font-bold tracking-widest bg-white dark:bg-slate-900 dark:text-slate-100">
+      </div>
+    </div>
+    <div class="p-2.5 bg-sky-50 dark:bg-slate-900 flex gap-2">
+      <button id="savePinsBtn" class="flex-1 btn-3d-blue text-white py-1.5 rounded-xl font-bold text-xs">حفظ</button>
+      <button id="cancelPinsModalBtn" class="flex-1 border dark:border-slate-700 bg-white dark:bg-slate-800 py-1.5 rounded-xl font-bold text-xs">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- مسح البيانات -->
+<div id="clearAppDataModal" class="hidden fixed inset-0 z-[75] items-center justify-center p-4 modal-backdrop">
+  <div class="card-3d w-full max-w-sm p-4 text-center space-y-2.5">
+    <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-xl"><i class="fas fa-triangle-exclamation"></i></div>
+    <h3 class="font-extrabold text-sm dark:text-slate-100">تأكيد مسح كافة البيانات</h3>
+    <p class="text-xs text-slate-500">سيتم مسح الأصناف والأقسام والسجلات نهائياً.</p>
+    <input id="confirmClearInput" type="text" placeholder="اكتب كلمة 'تأكيد'" class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 text-center font-bold text-xs bg-white dark:bg-slate-900 dark:text-slate-100">
+    <div class="flex gap-2 pt-1">
+      <button id="confirmClearAppDataBtn" class="flex-1 btn-3d-red text-white py-2 rounded-xl font-bold text-xs">مسح نهائي</button>
+      <button id="cancelClearAppDataBtn" class="flex-1 border dark:border-slate-700 py-2 rounded-xl font-bold text-xs">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- اختيار القسم للتصدير -->
+<div id="exportChoiceModal" class="hidden fixed inset-0 z-[70] items-center justify-center p-4 modal-backdrop">
+  <div class="card-3d w-full max-w-xs p-4 text-center space-y-3">
+    <div class="w-10 h-10 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto text-lg"><i class="fas fa-file-export"></i></div>
+    <h3 class="font-extrabold text-xs dark:text-slate-100">حدد القسم للتصدير</h3>
+    <div id="exportChoiceButtons" class="space-y-1.5 text-xs max-h-52 overflow-y-auto"></div>
+    <button id="closeExpChoiceModal" class="w-full border border-sky-200 text-slate-600 dark:text-slate-300 py-1.5 rounded-xl text-xs font-bold">إلغاء</button>
+  </div>
+</div>
+
+<!-- Custom Dialog -->
+<div id="customDialog" class="hidden fixed inset-0 z-[120] items-center justify-center p-4 modal-backdrop">
+  <div class="card-3d w-full max-w-xs p-4 text-center"><div id="dialogIcon" class="w-10 h-10 rounded-full mx-auto flex items-center justify-center text-lg mb-2"></div><h3 id="dialogTitle" class="font-extrabold text-xs dark:text-slate-100"></h3><p id="dialogMessage" class="text-[11px] text-slate-500 mt-1 leading-relaxed"></p><div id="dialogButtons" class="flex gap-2 mt-3 text-xs"></div></div>
+</div>
+
+<div id="toastBox" class="fixed top-14 left-4 right-4 z-[90] space-y-1.5 pointer-events-none"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getDatabase, ref, push, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C' || e.key === 'a' || e.key === 'A' || e.key === 'u' || e.key === 'U')) {
+    e.preventDefault();
+  }
+});
+
+function getDeviceId() {
+  let id = localStorage.getItem('app_device_id');
+  if(!id) {
+    id = 'dev_' + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem('app_device_id', id);
+  }
+  return id;
+}
+const deviceId = getDeviceId();
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBz5eJ3PR05WLBCfVuuqG5skZAZIK9jPgY",
+  authDomain: "mstwdaa-gard.firebaseapp.com",
+  projectId: "mstwdaa-gard",
+  storageBucket: "mstwdaa-gard.firebasestorage.app",
+  messagingSenderId: "152781960058",
+  appId: "1:152781960058:web:0faddce5bb9003bef3dcc3",
+  measurementId: "G-0GG6PXFEFP",
+  databaseURL: "https://mstwdaa-gard-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+let allItems = [], categories = [], history = [], workers = [], currentCategoryFilter = "all", historyFilter = null, currentUserRole = null, currentWorkerName = "";
+let adminPin = "777";
+
+let displayedItemsLimit = 30;
+
+const $ = id => document.getElementById(id);
+const esc = v => String(v??"").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const now = () => Date.now();
+const fmtTime = ts => new Date(ts).toLocaleString("en-GB", {dateStyle:"short", timeStyle:"short"});
+const dayKey = ts => new Date(ts).toISOString().slice(0,10);
+const localInputValue = ts => {
+  const d = new Date(ts), p = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+const toast = (msg, type="success") => {
+  const el = document.createElement("div");
+  el.className = `toast pointer-events-auto mx-auto max-w-xs rounded-xl px-3 py-1.5 shadow-lg text-xs font-bold ${type==="error"?"bg-red-600":type==="warning"?"bg-amber-500":"bg-sky-600"} text-white text-center`;
+  el.textContent = msg;
+  $("toastBox").appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+};
+
+function dialog(msg, title="تنبيه", type="info", confirm=false, cb=null){
+  $("dialogTitle").textContent = title;
+  $("dialogMessage").textContent = msg;
+  $("dialogIcon").className = `w-10 h-10 rounded-full mx-auto flex items-center justify-center text-lg mb-1 ${type==="error"||type==="warning"?"bg-red-100 text-red-600":type==="success"?"bg-sky-100 text-sky-600":"bg-blue-100 text-blue-600"}`;
+  $("dialogIcon").innerHTML = `<i class="fas ${type==="success"?"fa-check":type==="error"||type==="warning"?"fa-triangle-exclamation":"fa-info-circle"}"></i>`;
+  $("dialogButtons").innerHTML = confirm ? `<button id="dlgYes" class="flex-1 btn-3d-red text-white py-1.5 rounded-xl font-bold">متابعة</button><button id="dlgNo" class="flex-1 border dark:border-slate-700 py-1.5 rounded-xl font-bold dark:text-slate-200">إلغاء</button>` : `<button id="dlgOk" class="w-full btn-3d-blue text-white py-1.5 rounded-xl font-bold">حسناً</button>`;
+  $("customDialog").classList.remove("hidden");
+  $("customDialog").classList.add("flex");
+  if(confirm){ $("dlgYes").onclick = () => { closeDialog(); cb && cb(); }; $("dlgNo").onclick = closeDialog; }
+  else $("dlgOk").onclick = closeDialog; }
+function closeDialog(){ $("customDialog").classList.add("hidden"); $("customDialog").classList.remove("flex"); }
+
+/* =========================================================
+   بوابة Firebase Authentication (بريد + كلمة مرور)
+   الحسابات تُضاف يدوياً فقط من كونسول Firebase من قبلك،
+   لا يوجد أي كود بالتطبيق يسمح لأي حد يسجل حساب لحاله.
+   ========================================================= */
+function showAuthOverlay(){
+  $("authOverlay").classList.remove("hidden");
+  $("authOverlay").classList.add("flex");
+  $("loginOverlay").classList.add("hidden");
+  $("loginOverlay").classList.remove("flex");
+}
+function hideAuthOverlay(){
+  $("authOverlay").classList.add("hidden");
+  $("authOverlay").classList.remove("flex");
+  $("loginOverlay").classList.remove("hidden");
+  $("loginOverlay").classList.add("flex");
+}
+
+onAuthStateChanged(auth, user => {
+  if(user){
+    hideAuthOverlay();
+  } else {
+    showAuthOverlay();
+  }
+});
+
+$("authLoginBtn").onclick = async () => {
+  const email = $("authEmailInput").value.trim();
+  const password = $("authPasswordInput").value;
+  $("authErrorMsg").classList.add("hidden");
+
+  if(!email || !password) return toast("يرجى إدخال البريد وكلمة المرور", "warning");
+
+  $("authLoginSpinner").classList.remove("hidden");
+  $("authLoginBtnText").textContent = "جاري التحقق...";
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    $("authEmailInput").value = "";
+    $("authPasswordInput").value = "";
+    toast("تم التحقق من الحساب بنجاح");
+  } catch(err) {
+    let msg = "تعذر تسجيل الدخول، تحقق من البيانات";
+    if(err.code === "auth/invalid-credential" || err.code === "auth/wrong-password") msg = "البريد أو كلمة المرور غير صحيحة";
+    else if(err.code === "auth/user-not-found") msg = "هذا البريد غير مصرح له بالدخول";
+    else if(err.code === "auth/too-many-requests") msg = "محاولات كثيرة، حاول لاحقاً";
+    else if(err.code === "auth/invalid-email") msg = "صيغة البريد غير صحيحة";
+    $("authErrorMsg").textContent = msg;
+    $("authErrorMsg").classList.remove("hidden");
+  } finally {
+    $("authLoginSpinner").classList.add("hidden");
+    $("authLoginBtnText").textContent = "تسجيل الدخول";
+  }
+};
+
+$("authPasswordInput").addEventListener("keydown", e => { if(e.key === "Enter") $("authLoginBtn").click(); });
+
+$("switchAccountBtn").onclick = () => {
+  dialog("سيتم تسجيل الخروج من حساب البريد المصرح به بالكامل من هذا الجهاز، هل تريد المتابعة؟", "تسجيل خروج كامل", "warning", true, async () => {
+    await signOut(auth);
+    toast("تم تسجيل الخروج من الحساب");
+  });
+};
+
+onValue(ref(db, ".info/connected"), snap => {
+  const isOnline = snap.val() === true && navigator.onLine;
+  const container = $("connectionStatus");
+  if(isOnline) {
+    container.className = "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-emerald-500 text-white shadow-sm transition-all duration-300";
+    $("statusText").textContent = "متصل";
+  } else {
+    container.className = "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-red-600 text-white shadow-sm transition-all duration-300";
+    $("statusText").textContent = "غير متصل";
+  }
+});
+
+onValue(ref(db, "app_settings/adminPin"), snap => { if(snap.val()) adminPin = String(snap.val()); });
+onValue(ref(db, "workers"), snap => {
+  workers = [];
+  const d = snap.val() || {};
+  Object.entries(d).forEach(([id, v]) => workers.push({ id, ...v }));
+  renderWorkersList();
+});
+
+$("settingsToggleBtn").onclick = () => {
+  $("settingsSubMenu").classList.toggle("hidden");
+  $("settingsChevron").classList.toggle("rotate-180");
+};
+
+function getThemeKey() {
+  if (currentUserRole === 'worker') {
+    return 'theme_pref_worker_' + (currentWorkerName || 'default');
+  }
+  return 'theme_pref_admin';
+}
+
+function setDarkModeState(isDark) {
+  document.documentElement.classList.toggle('dark', isDark);
+  document.body.classList.toggle('dark', isDark);
+  $("darkModeStatus").textContent = isDark ? "مُفعل" : "مُعطل";
+}
+
+function loadUserTheme() {
+  const key = getThemeKey();
+  const savedTheme = localStorage.getItem(key);
+  const isDark = savedTheme === 'dark';
+  setDarkModeState(isDark);
+}
+
+$("darkModeToggleBtn").onclick = () => {
+  const isDark = !document.body.classList.contains('dark');
+  setDarkModeState(isDark);
+  localStorage.setItem(getThemeKey(), isDark ? 'dark' : 'light');
+};
+
+$("openClearAppDataModalBtn").onclick = () => { $("confirmClearInput").value = ""; $("clearAppDataModal").classList.remove("hidden"); $("clearAppDataModal").classList.add("flex"); };
+$("cancelClearAppDataBtn").onclick = () => { $("clearAppDataModal").classList.add("hidden"); $("clearAppDataModal").classList.remove("flex"); };
+$("confirmClearAppDataBtn").onclick = async () => {
+  if ($("confirmClearInput").value.trim() !== "تأكيد") return toast("يرجى كتابة كلمة 'تأكيد' بشكل صحيح", "warning");
+  try {
+    await remove(ref(db, "items"));
+    await remove(ref(db, "categories"));
+    await remove(ref(db, "history"));
+    $("clearAppDataModal").classList.add("hidden");
+    toast("تم مسح كافة البيانات بنجاح", "error");
+  } catch(e) { dialog("حدث خطأ أثناء مسح البيانات", "خطأ", "error"); }
+};
+
+$("openPinsModalBtn").onclick = () => { $("adminPinInput").value = adminPin; $("pinsModal").classList.remove("hidden"); $("pinsModal").classList.add("flex"); };
+$("closePinsModalBtn").onclick = $("cancelPinsModalBtn").onclick = () => { $("pinsModal").classList.add("hidden"); $("pinsModal").classList.remove("flex"); };
+$("savePinsBtn").onclick = async () => {
+  const newAdmin = $("adminPinInput").value.trim();
+  if(!newAdmin) return dialog("يرجى إدخال الكود", "تنبيه", "warning");
+  await set(ref(db, "app_settings/adminPin"), newAdmin);
+  adminPin = newAdmin;
+  $("pinsModal").classList.add("hidden");
+  toast("تم تحديث كود الأدمن");
+};
+
+$("openWorkersModalBtn").onclick = () => { $("workersModal").classList.remove("hidden"); $("workersModal").classList.add("flex"); };
+$("closeWorkersModalBtn").onclick = () => { $("workersModal").classList.add("hidden"); $("workersModal").classList.remove("flex"); };
+
+$("addWorkerBtn").onclick = async () => {
+  const name = $("workerNameInput").value.trim();
+  const code = $("workerCodeInput").value.trim();
+  if(!name || !code) return toast("يرجى إدخال اسم العامل والكود المخصص له", "warning");
+
+  const r = push(ref(db, "workers"));
+  await set(r, { name, code, isBlocked: false, deviceId: "" });
+  $("workerNameInput").value = "";
+  $("workerCodeInput").value = "";
+  toast("تم إضافة العامل بنجاح");
+};
+
+function renderWorkersList() {
+  $("workersList").innerHTML = workers.map(w => `
+    <div class="p-2 border border-sky-100 dark:border-slate-700 rounded-xl flex justify-between items-center bg-white dark:bg-slate-900 text-xs">
+      <div>
+        <b class="dark:text-slate-100 block">${esc(w.name)} (${esc(w.code)})</b>
+        <span class="text-[9px] text-slate-400">الجهاز: ${w.deviceId ? esc(w.deviceId) : 'لم يتصل بعد'}</span>
+      </div>
+      <div class="flex gap-1">
+        <button onclick="toggleBlockWorker('${w.id}', ${w.isBlocked})" class="px-2 py-1 rounded-lg font-bold text-[10px] ${w.isBlocked ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}">${w.isBlocked ? 'إلغاء الحظر' : 'حظر'}</button>
+        <button onclick="deleteWorker('${w.id}')" class="text-red-500 p-1"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  `).join("") || `<p class="text-slate-400 text-center text-[11px]">لا يوجد عمال مسجلون حالياً</p>`;
+}
+
+window.toggleBlockWorker = async (id, currentStatus) => {
+  await update(ref(db, `workers/${id}`), { isBlocked: !currentStatus });
+  toast(!currentStatus ? "تم حظر العامل" : "تم إلغاء حظر العامل");
+};
+
+window.deleteWorker = async (id) => {
+  await remove(ref(db, `workers/${id}`));
+  toast("تم حذف حساب العامل");
+};
+
+function applyRolePermissions(role, workerName = "") {
+  currentUserRole = role;
+  currentWorkerName = workerName;
+  loadUserTheme();
+  if(role === 'worker') {
+    $("roleBadge").textContent = workerName ? `عامل: ${workerName}` : "عامل الجرد";
+    document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+    navigate('items', 'جميع الأصناف');
+  } else {
+    $("roleBadge").textContent = "مدير المستودع";
+    document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+    navigate('home', 'الرئيسية');
+  }
+  renderAll();
+}
+
+$("loginBtn").onclick = async () => {
+  const pin = $("pinInput").value.trim();
+  if(!pin) return toast("يرجى إدخال الكود", "warning");
+
+  if(pin === adminPin) {
+    $("loginOverlay").classList.add("hidden");
+    applyRolePermissions('admin');
+    toast("أهلاً بك يا مدير");
+  } else {
+    const matchedWorker = workers.find(w => w.code === pin);
+    if(matchedWorker) {
+      if(matchedWorker.isBlocked) {
+        $("blockedWorkerMsg").textContent = `عفواً يا (${matchedWorker.name})، تم حظر حسابك أو جهازك من قبل إدارة المستودع!`;
+        $("blockedWorkerModal").classList.remove("hidden");
+        $("blockedWorkerModal").classList.add("flex");
+
+        const secRef = push(ref(db, "history"));
+        await set(secRef, {
+          action: `⚠️ محاولة دخول من عامل محظور`,
+          itemId: "",
+          name: `العامل المحظور: ${matchedWorker.name}`,
+          categoryName: "إخطار أمني",
+          qty: 0,
+          unit: "-",
+          at: now()
+        });
+        return;
+      }
+
+      await update(ref(db, `workers/${matchedWorker.id}`), { deviceId });
+      $("loginOverlay").classList.add("hidden");
+      applyRolePermissions('worker', matchedWorker.name);
+      toast(`أهلاً بك (${matchedWorker.name})`);
+    } else {
+      toast("كود الدخول غير صحيح!", "error");
+    }
+  }
+  $("pinInput").value = "";
+};
+
+$("closeBlockedModalBtn").onclick = () => {
+  $("blockedWorkerModal").classList.add("hidden");
+  $("blockedWorkerModal").classList.remove("flex");
+};
+
+$("logoutBtn").onclick = () => {
+  displayedItemsLimit = 30;
+  $("loginOverlay").classList.remove("hidden");
+  $("loginOverlay").classList.add("flex");
+};
+
+function navigate(page, title) {
+  if (currentUserRole === 'worker' && page !== 'items' && page !== 'reports') return;
+  
+  displayedItemsLimit = 30;
+  
+  document.querySelectorAll(".page-section").forEach(x => x.classList.remove("active"));
+  $(page).classList.add("active");
+  $("pageTitle").textContent = title;
+  closeSidebar();
+  if (page === "history") renderHistory();
+  if (page === "items") renderItemsCompact();
+  
+  const homePage = currentUserRole === 'worker' ? 'items' : 'home';
+  if (page !== homePage) {
+    $("headerBackBtn").classList.remove("hidden");
+    $("headerBackBtn").classList.add("flex");
+    $("menuBtn").classList.add("hidden");
+  } else {
+    $("headerBackBtn").classList.add("hidden");
+    $("headerBackBtn").classList.remove("flex");
+    $("menuBtn").classList.remove("hidden");
+  }
+}
+
+$("headerBackBtn").onclick = () => navigate(currentUserRole === 'worker' ? 'items' : 'home', currentUserRole === 'worker' ? 'جميع الأصناف' : 'الرئيسية');
+
+function openSidebar(){ $("sidebar").classList.remove("translate-x-full"); $("sidebarOverlay").classList.remove("hidden"); }
+function closeSidebar(){ $("sidebar").classList.add("translate-x-full"); $("sidebarOverlay").classList.add("hidden"); }
+$("menuBtn").onclick = openSidebar;
+$("sidebarOverlay").onclick = closeSidebar;
+
+document.querySelectorAll("[data-page]").forEach(b => b.addEventListener("click", () => {
+  navigate(b.dataset.page, b.dataset.title);
+}));
+
+$("currentDateDisplay").textContent = new Date().toLocaleDateString("ar-EG", {weekday:"long", year:"numeric", month:"long", day:"numeric"});
+$("reportDate").textContent = fmtTime(now());
+
+$("openAddCategoryModalBtn").onclick = () => {
+  $("categoryModalTitle").textContent = "قسم جديد";
+  $("editCategoryId").value = "";
+  $("categoryNameInput").value = "";
+  $("categoryModal").classList.remove("hidden");
+  $("categoryModal").classList.add("flex");
+};
+$("closeCategoryModalBtn").onclick = $("cancelCategoryModalBtn").onclick = () => { $("categoryModal").classList.add("hidden"); $("categoryModal").classList.remove("flex"); };
+
+$("saveCategoryBtn").onclick = async () => {
+  const name = $("categoryNameInput").value.trim();
+  const id = $("editCategoryId").value;
+  if (!name) return dialog("يرجى إدخال اسم القسم", "تنبيه", "warning");
+
+  if(id) {
+    await update(ref(db, "categories/" + id), { name });
+    toast("تم تعديل القسم");
+  } else {
+    const r = push(ref(db, "categories"));
+    await set(r, { name, createdAt: now() });
+    toast("تم إنشاء القسم بنجاح");
+  }
+  $("categoryModal").classList.add("hidden");
+};
+
+window.deleteCategory = (catId, catName) => {
+  const itemsInCat = allItems.filter(x => x.categoryId === catId && !x.isDeleted);
+  dialog(`هل أنت متأكد من حذف قسم (${catName})؟ ${itemsInCat.length ? `سيتم نقل ${itemsInCat.length} صنف تابع له إلى سلة المحذوفات.` : ''}`, "تأكيد حذف القسم", "warning", true, async () => {
+    try {
+      await remove(ref(db, "categories/" + catId));
+      for (const item of itemsInCat) {
+        await update(ref(db, "items/" + item.id), { isDeleted: true, deletedAt: now() });
+      }
+      toast("تم حذف القسم بنجاح");
+    } catch(e) {
+      dialog("حدث خطأ أثناء حذف القسم", "خطأ", "error");
+    }
+  });
+};
+
+function openModal(item = null) {
+  if(!categories.length) return dialog("يرجى إضافة قسم واحد على الأقل قبل إضافة الأصناف!", "لا توجد أقسام", "warning");
+
+  $("modalTitle").textContent = item ? "تعديل صنف" : "إضافة صنف";
+  $("editItemId").value = item?.id || "";
+  $("itemName").value = item?.name || "";
+  $("itemQty").value = item ? item.qty : "";
+  $("itemUnit").value = item?.unit || "عدد";
+  
+  $("itemCategorySelect").innerHTML = categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  if(item?.categoryId) $("itemCategorySelect").value = item.categoryId;
+  else if(currentCategoryFilter !== "all") $("itemCategorySelect").value = currentCategoryFilter;
+
+  $("operationDateTime").value = localInputValue(item?.updatedAt || now());
+  $("addModal").classList.remove("hidden");
+  $("addModal").classList.add("flex");
+}
+
+$("openAddModalBtn").onclick = () => openModal();
+$("closeAddModalBtn").onclick = $("cancelAddModalBtn").onclick = () => { $("addModal").classList.add("hidden"); $("addModal").classList.remove("flex"); };
+
+async function logAction(action, item, at=now(), extra={}){
+  const r = push(ref(db, "history"));
+  const cat = categories.find(c => c.id === item.categoryId);
+  const byUser = currentUserRole === 'worker' ? (currentWorkerName || 'العامل') : 'المدير';
+  await set(r, {
+    action: `${action} (${byUser})`,
+    itemId: item?.id || "",
+    name: item?.name || "",
+    categoryName: cat ? cat.name : "عام",
+    qty: Number(item?.qty) || 0,
+    unit: item?.unit || "عدد",
+    at: Number(at),
+    ...extra
+  });
+}
+
+$("saveItemBtn").onclick = async () => {
+  const id = $("editItemId").value;
+  const name = $("itemName").value.trim();
+  const categoryId = $("itemCategorySelect").value;
+  const qty = Math.max(0, Number($("itemQty").value) || 0);
+  const unit = $("itemUnit").value.trim() || "عدد";
+  const dt = $("operationDateTime").value;
+  const at = dt ? new Date(dt).getTime() : now();
+
+  if(!name) return dialog("يرجى إدخال اسم الصنف", "بيانات ناقصة", "warning");
+
+  const duplicate = allItems.find(x => !x.isDeleted && x.categoryId === categoryId && x.name.toLowerCase() === name.toLowerCase() && x.id !== id);
+
+  if(duplicate) {
+    dialog(`الصنف "${name}" موجود بالفعل في هذا القسم! هل تريد الانتقال لتعديله الآن؟`, "صنف مكرر", "warning", true, () => {
+      openModal(duplicate);
+    });
+    return;
+  }
+
+  try {
+    if(id) {
+      await update(ref(db, "items/" + id), { name, categoryId, qty, unit, updatedAt: at });
+      await logAction("تعديل", { id, name, categoryId, qty, unit }, at);
+      toast("تم التعديل بنجاح");
+    } else {
+      const r = push(ref(db, "items"));
+      const item = { id: r.key, name, categoryId, qty, unit, isDeleted: false, createdAt: at, updatedAt: at };
+      await set(r, item);
+      await logAction("إضافة", item, at);
+      toast("تمت الإضافة بنجاح");
+    }
+    $("addModal").classList.add("hidden");
+  } catch(e) { dialog("تعذر الحفظ. تحقق من الاتصال.", "خطأ", "error"); }
+};
+
+onValue(ref(db, "categories"), snap => {
+  categories = [];
+  const d = snap.val() || {};
+  Object.entries(d).forEach(([id, v]) => categories.push({ id, ...v }));
+  renderAll();
+});
+
+onValue(ref(db, "items"), snap => {
+  allItems = [];
+  const d = snap.val() || {};
+  Object.entries(d).forEach(([id, v]) => allItems.push({ id, ...v }));
+  renderAll();
+});
+
+onValue(ref(db, "history"), snap => {
+  history = [];
+  const d = snap.val() || {};
+  Object.entries(d).forEach(([id, v]) => history.push({ id, ...v }));
+  history.sort((a,b) => (b.at||0) - (a.at||0));
+  renderHistory();
+  renderRecent();
+});
+
+function renderAll() {
+  renderCategoriesGrid();
+  renderCategoryFilterButtons();
+  renderItemsCompact();
+  renderStats();
+  renderReports();
+}
+
+function renderCategoriesGrid() {
+  $("categoriesListGrid").innerHTML = categories.map(cat => {
+    const count = allItems.filter(x => x.categoryId === cat.id && !x.isDeleted).length;
+    return `
+      <div class="card-3d p-3 flex justify-between items-center">
+        <div>
+          <b class="text-xs dark:text-slate-100 font-bold">${esc(cat.name)}</b>
+          <p class="text-[10px] text-sky-600 font-bold mt-0.5">${count} صنف</p>
+        </div>
+        <div class="flex gap-1">
+          <button onclick="editCategory('${cat.id}', '${esc(cat.name)}')" class="text-sky-600 p-1.5 hover:bg-sky-50 dark:hover:bg-slate-800 rounded-lg"><i class="fas fa-pen text-xs"></i></button>
+          <button onclick="deleteCategory('${cat.id}', '${esc(cat.name)}')" class="text-red-500 p-1.5 hover:bg-red-50 dark:hover:bg-slate-800 rounded-lg"><i class="fas fa-trash text-xs"></i></button>
+        </div>
+      </div>
+    `;
+  }).join("") || `<p class="text-slate-400 text-xs text-center py-3 col-span-2">لا توجد أقسام</p>`;
+
+  $("bulkCategorySelect").innerHTML = categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+}
+
+window.editCategory = (id, name) => {
+  $("categoryModalTitle").textContent = "تعديل قسم";
+  $("editCategoryId").value = id;
+  $("categoryNameInput").value = name;
+  $("categoryModal").classList.remove("hidden");
+  $("categoryModal").classList.add("flex");
+};
+
+function renderCategoryFilterButtons() {
+  let html = `<button onclick="setCategoryFilter('all')" class="px-3 py-1 rounded-full text-[11px] font-bold transition shrink-0 ${currentCategoryFilter==='all'?'bg-sky-600 text-white shadow-sm':'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border dark:border-slate-700'}">الكل</button>`;
+  categories.forEach(c => {
+    html += `<button onclick="setCategoryFilter('${c.id}')" class="px-3 py-1 rounded-full text-[11px] font-bold transition shrink-0 ${currentCategoryFilter===c.id?'bg-sky-600 text-white shadow-sm':'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border dark:border-slate-700'}">${esc(c.name)}</button>`;
+  });
+  $("categoryFilterContainer").innerHTML = html;
+}
+
+window.setCategoryFilter = (catId) => {
+  currentCategoryFilter = catId;
+  displayedItemsLimit = 30;
+  renderCategoryFilterButtons();
+  renderItemsCompact();
+};
+
+function renderStats() {
+  const active = allItems.filter(x => !x.isDeleted);
+  const totalQty = active.reduce((s, x) => s + (Number(x.qty) || 0), 0);
+  
+  let html = `
+    <div class="card-3d p-2.5 text-center"><div class="text-sky-600 text-lg"><i class="fas fa-cubes"></i></div><p class="text-[10px] text-slate-500 mt-0.5">الأصناف</p><b class="text-base block mt-0.5 dark:text-slate-100">${active.length}</b></div>
+    <div class="card-3d p-2.5 text-center"><div class="text-emerald-500 text-lg"><i class="fas fa-chart-pie"></i></div><p class="text-[10px] text-slate-500 mt-0.5">إجمالي الكميات</p><b class="text-base block mt-0.5 dark:text-slate-100">${totalQty}</b></div>
+  `;
+
+  categories.slice(0, 2).forEach(c => {
+    const qty = active.filter(x => x.categoryId === c.id).reduce((s, x) => s + (Number(x.qty) || 0), 0);
+    html += `<div class="card-3d p-2.5 text-center"><div class="text-indigo-500 text-lg"><i class="fas fa-layer-group"></i></div><p class="text-[10px] text-slate-500 mt-0.5">${esc(c.name)}</p><b class="text-base block mt-0.5 dark:text-slate-100">${qty}</b></div>`;
+  });
+
+  $("statsGrid").innerHTML = html;
+  $("repTotalItems").textContent = active.length;
+  $("repTotalQty").textContent = totalQty;
+}
+
+function renderItemsCompact() {
+  const active = allItems.filter(x => !x.isDeleted);
+  const q = $("searchInput").value.trim().toLowerCase();
+
+  let list = active.filter(x => String(x.name).toLowerCase().includes(q));
+  if (currentCategoryFilter !== "all") {
+    list = list.filter(x => x.categoryId === currentCategoryFilter);
+  }
+
+  const totalFilteredCount = list.length;
+  const slicedList = list.slice(0, displayedItemsLimit);
+
+  $("itemsCompactList").innerHTML = slicedList.map((x, idx) => {
+    const cat = categories.find(c => c.id === x.categoryId);
+    return `
+      <div class="p-2 border border-sky-100 dark:border-slate-700/80 rounded-xl flex items-center justify-between bg-white dark:bg-slate-900 shadow-sm text-xs gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-[10px] text-slate-400 font-bold shrink-0">#${idx+1}</span>
+          <div class="min-w-0">
+            <b class="dark:text-slate-100 block truncate text-xs font-bold">${esc(x.name)}</b>
+            <span class="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300 mt-0.5">${esc(cat ? cat.name : 'عام')}</span>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="font-extrabold text-sky-700 dark:text-sky-400 text-xs">${Number(x.qty)||0} <span class="text-[9px] font-normal text-slate-500 dark:text-slate-400">${esc(x.unit||'عدد')}</span></span>
+          <div class="flex items-center gap-1 border-r border-sky-100 dark:border-slate-800 pr-1">
+            <button onclick="editItem('${x.id}')" class="text-sky-600 hover:text-sky-800 p-1"><i class="fas fa-pen text-xs"></i></button>
+            <button onclick="softDeleteItem('${x.id}')" class="text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash text-xs"></i></button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  $("emptyItemsState").classList.toggle("hidden", totalFilteredCount > 0);
+
+  if (totalFilteredCount > displayedItemsLimit) {
+    $("loadMoreContainer").classList.remove("hidden");
+    $("displayedItemsCount").textContent = `تم عرض ${slicedList.length} من إجمالي ${totalFilteredCount} صنف`;
+  } else {
+    $("loadMoreContainer").classList.add("hidden");
+  }
+
+  const deleted = allItems.filter(x => x.isDeleted);
+  $("deletedCount").textContent = deleted.length;
+  $("recycleList").innerHTML = deleted.map(x => `
+    <div class="p-2 flex justify-between items-center text-xs">
+      <div>
+        <b class="line-through text-slate-500">${esc(x.name)}</b>
+        <p class="text-[9px] text-slate-400">الكمية: ${x.qty} ${esc(x.unit||'')}</p>
+      </div>
+      <div class="flex gap-1">
+        <button onclick="restoreItem('${x.id}')" class="bg-sky-100 text-sky-700 p-1 rounded-lg"><i class="fas fa-rotate-left text-xs"></i></button>
+        <button onclick="hardDeleteItem('${x.id}')" class="bg-red-100 text-red-600 p-1 rounded-lg"><i class="fas fa-trash text-xs"></i></button>
+      </div>
+    </div>
+  `).join("");
+  $("emptyRecycleState").classList.toggle("hidden", deleted.length > 0);
+}
+
+$("loadMoreBtn").onclick = () => {
+  displayedItemsLimit += 30;
+  renderItemsCompact();
+};
+
+$("searchInput").oninput = () => {
+  displayedItemsLimit = 30;
+  renderItemsCompact();
+};
+
+window.editItem = id => { const item = allItems.find(x => x.id === id); if(item) openModal(item); };
+window.softDeleteItem = id => { dialog("سيُنقل الصنف لسلة المحذوفات.", "تأكيد", "warning", true, async () => { await update(ref(db, "items/" + id), { isDeleted: true, deletedAt: now() }); toast("تم نقل الصنف للسلة"); }); };
+window.restoreItem = id => { update(ref(db, "items/" + id), { isDeleted: false }); toast("تمت الاستعادة"); };
+window.hardDeleteItem = id => { dialog("حذف نهائي لا يمكن التراجع عنه!", "حذف نهائي", "error", true, async () => { await remove(ref(db, "items/" + id)); toast("تم الحذف النهائي"); }); };
+
+$("clearHistoryBtn").onclick = async () => {
+  if(!history.length) return toast("السجل فارغ بالفعل", "warning");
+  dialog("هل أنت متأكد من مسح جميع سجلات الحركة والتغييرات بالكامل؟", "مسح السجل", "error", true, async () => {
+    try {
+      await remove(ref(db, "history"));
+      toast("تم مسح السجل بالكامل");
+    } catch(e) { dialog("تعذر مسح السجل", "خطأ", "error"); }
+  });
+};
+
+$("clearRecycleBtn").onclick = async () => {
+  const deleted = allItems.filter(x => x.isDeleted);
+  if(!deleted.length) return toast("سلة المحذوفات فارغة بالفعل", "warning");
+  dialog("تفريغ سلة المحذوفات نهائياً؟", "تفريغ السلة", "error", true, async () => {
+    try {
+      for(const item of deleted) await remove(ref(db, "items/" + item.id));
+      toast("تم تفريغ سلة المحذوفات");
+    } catch(e) { dialog("تعذر تفريغ السلة", "خطأ", "error"); }
+  });
+};
+
+$("deleteAllItemsBtn").onclick = () => {
+  const active = allItems.filter(x => !x.isDeleted);
+  if(!active.length) return toast("لا توجد أصناف لمسحها", "warning");
+  dialog(`نقل كافة الأصناف (${active.length} صنف) للسلة؟`, "مسح شامل", "warning", true, async () => {
+    for (const item of active) { await update(ref(db, "items/" + item.id), { isDeleted: true, deletedAt: now() }); }
+    toast("تم نقل الجميع للسلة");
+  });
+};
+
+function renderReports() {
+  const active = allItems.filter(x => !x.isDeleted);
+  let html = "";
+
+  categories.forEach(cat => {
+    const items = active.filter(x => x.categoryId === cat.id);
+    html += `
+      <div class="card-3d p-2.5">
+        <h3 class="font-black text-xs mb-1.5 text-sky-700 dark:text-sky-300 flex items-center gap-1"><i class="fas fa-layer-group"></i> جدول ${esc(cat.name)}</h3>
+        <table class="w-full text-right text-xs">
+          <thead class="bg-sky-50 dark:bg-slate-900 text-sky-900 dark:text-slate-300 border-b border-sky-100">
+            <tr><th class="p-1.5 w-8 text-center">#</th><th class="p-1.5 text-center">الصنف</th><th class="p-1.5 w-16 text-center">الكمية</th><th class="p-1.5 w-16 text-center">الوحدة</th></tr>
+          </thead>
+          <tbody class="divide-y divide-sky-100 dark:divide-slate-700">
+            ${items.length ? items.map((x, idx) => `<tr><td class="p-1.5 text-center text-slate-400 font-bold text-[10px]">${idx+1}</td><td class="p-1.5 font-bold dark:text-slate-100 text-center" style="word-break: break-word;">${esc(x.name)}</td><td class="p-1.5 font-bold text-center dark:text-slate-100">${Number(x.qty)||0}</td><td class="p-1.5 text-center text-slate-500">${esc(x.unit||'عدد')}</td></tr>`).join('') : `<tr><td colspan="4" class="p-2 text-center text-slate-400">لا توجد أصناف</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  $("reportsCategoryTables").innerHTML = html;
+}
+
+let exportActionCallback = null;
+function promptExportChoice(callback) {
+  exportActionCallback = callback;
+  let btns = `<button onclick="triggerExportChoice('all')" class="w-full card-3d p-2 text-sky-800 dark:text-sky-200 font-bold hover:bg-sky-50">جميع الأقسام</button>`;
+  categories.forEach(c => {
+    btns += `<button onclick="triggerExportChoice('${c.id}')" class="w-full card-3d p-2 text-slate-800 dark:text-slate-200 font-bold hover:bg-sky-50">${esc(c.name)}</button>`;
+  });
+  $("exportChoiceButtons").innerHTML = btns;
+  $("exportChoiceModal").classList.remove("hidden");
+  $("exportChoiceModal").classList.add("flex");
+}
+
+window.triggerExportChoice = (catId) => {
+  $("exportChoiceModal").classList.add("hidden");
+  if(exportActionCallback) exportActionCallback(catId);
+};
+$("closeExpChoiceModal").onclick = () => $("exportChoiceModal").classList.add("hidden");
+
+// طباعة
+$("btnPrint").onclick = () => {
+  promptExportChoice(catId => {
+    let active = allItems.filter(x => !x.isDeleted);
+    if(catId !== "all") active = active.filter(x => x.categoryId === catId);
+    if(!active.length) return dialog("لا توجد بيانات للطباعة", "تنبيه", "warning");
+
+    const catsToExport = catId === "all" ? categories : categories.filter(c => c.id === catId);
+    let printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html dir="rtl" lang="ar">
+      <head>
+        <title>طباعة تقرير جرد المستودع</title>
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+        <style>
+          body { font-family: 'Cairo', sans-serif; padding: 10px; direction: rtl; text-align: right; color: #000; }
+          h2 { color: #000; text-align: center; margin-bottom: 5px; font-weight: 900; }
+          p.date { text-align: center; color: #000; font-size: 13px; margin-bottom: 15px; font-weight: bold; }
+          .cat-title { background: #e2e8f0; color: #000; padding: 5px 10px; border: 1px solid #000; font-weight: 900; margin-top: 10px; margin-bottom: 5px; font-size: 15px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 14px; color: #000; font-weight: bold; }
+          th { background: #cbd5e1; color: #000; border: 2px solid #000; padding: 5px; text-align: center; font-weight: 900; }
+          td { border: 1px solid #000; padding: 4px 6px; text-align: center; word-break: break-word; color: #000; }
+          .text-center { text-align: center; }
+        </style>
+      </head>
+      <body>
+        <h2>تقرير جرد المستودع</h2>
+        <p class="date">التاريخ : &nbsp;&nbsp; ${new Date().toLocaleString("en-GB")}</p>
+        ${catsToExport.map(c => {
+          const items = active.filter(x => x.categoryId === c.id);
+          if(!items.length) return '';
+          return `
+            <div class="cat-title">${esc(c.name)}</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 40px;" class="text-center">#</th>
+                  <th>اسم الصنف</th>
+                  <th style="width: 90px;" class="text-center">الكمية</th>
+                  <th style="width: 80px;" class="text-center">الوحدة</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map((x, idx) => `
+                  <tr>
+                    <td class="text-center">${idx+1}</td>
+                    <td style="text-align: center; word-break: break-word;">${esc(x.name)}</td>
+                    <td class="text-center">${x.qty}</td>
+                    <td class="text-center">${esc(x.unit||'عدد')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        }).join('')}
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+  });
+};
+
+// تصدير Excel معدل ومظبوط 100% بالاتجاه المعكوس والألوان العصرية والتخطيط المطلوب
+$("excelBtn").onclick = () => {
+  promptExportChoice(catId => {
+    let active = allItems.filter(x => !x.isDeleted);
+    if(catId !== "all") active = active.filter(x => x.categoryId === catId);
+    if(!active.length) return dialog("لا توجد بيانات للتصدير", "تنبيه", "warning");
+
+    const selectedCategory = categories.find(c => c.id === catId);
+    const categoryName = catId === "all" ? "جميع_الأقسام" : (selectedCategory ? selectedCategory.name.replace(/[\/\\?%*:|"<>]/g, "_") : "قسم");
+    const fileName = `تقرير_جرد_${categoryName}.xlsx`;
+
+    const wb = XLSX.utils.book_new();
+    wb.Workbook = { Views: [{ RTL: true }] }; 
+
+    const catsToExport = catId === "all" ? categories : categories.filter(c => c.id === catId);
+
+    const borderStyle = {
+      top: { style: "thin", color: { auto: 1 } },
+      bottom: { style: "thin", color: { auto: 1 } },
+      left: { style: "thin", color: { auto: 1 } },
+      right: { style: "thin", color: { auto: 1 } }
+    };
+
+    catsToExport.forEach(c => {
+      const items = active.filter(x => x.categoryId === c.id);
+      if(items.length) {
+        const dateStr = new Date().toLocaleString("en-GB");
+        const sheetData = [
+          ["تقرير جرد المستودع", "", "", ""],
+          ["التاريخ :  " + dateStr, "", "", ""],
+          ["#", "اسم الصنف", "الكمية", "الوحدة"],
+          ...items.map((x, idx) => [idx + 1, x.name || "", Number(x.qty) || 0, x.unit || "عدد"])
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        ws['!cols'] = [{ wch: 6 }, { wch: 35 }, { wch: 15 }, { wch: 15 }];
+        
+        ws['!merges'] = [
+          { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
+          { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } } 
+        ];
+
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+            const address = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!ws[address]) ws[address] = { t: 's', v: '' }; 
+
+            if (R === 0) { 
+              ws[address].s = { font: { bold: true, sz: 16, color: { rgb: "000000" } }, alignment: { horizontal: "center", vertical: "center" } };
+            } else if (R === 1) {
+              ws[address].s = { font: { bold: true, sz: 12, color: { rgb: "000000" } }, alignment: { horizontal: "center", vertical: "center" } };
+            } else if (R === 2) { 
+              ws[address].s = {
+                fill: { fgColor: { rgb: "8EA9DB" } }, 
+                font: { bold: true, color: { rgb: "000000" }, sz: 12 },
+                alignment: { horizontal: "center", vertical: "center" },
+                border: borderStyle
+              };
+            } else { 
+              ws[address].s = {
+                font: { bold: true, sz: 11, color: { rgb: "000000" } },
+                alignment: { horizontal: "center", vertical: "center" },
+                border: borderStyle
+              };
+            }
+          }
+        }
+
+        let sheetName = c.name.replace(/[\/\\?%*:|"<>]/g, "_").substring(0, 30);
+        if(!sheetName) sheetName = "قسم";
+        
+        let finalSheetName = sheetName;
+        let counter = 1;
+        while(wb.SheetNames.includes(finalSheetName)) {
+          finalSheetName = `${sheetName}_${counter++}`;
+        }
+
+        XLSX.utils.book_append_sheet(wb, ws, finalSheetName);
+      }
+    });
+
+    try {
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName; 
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      toast("تم تصدير ملف Excel بنجاح");
+    } catch(err) {
+      console.error(err);
+      dialog("حدث خطأ أثناء تصدير الملف", "خطأ", "error");
+    }
+  });
+};
+
+// PDF مصغر ومغمق وواضح جدا
+$("pdfBtn").onclick = () => {
+  promptExportChoice(catId => {
+    let active = allItems.filter(x => !x.isDeleted);
+    if(catId !== "all") active = active.filter(x => x.categoryId === catId);
+    if(!active.length) return dialog("لا توجد بيانات للتصدير", "تنبيه", "warning");
+
+    const selectedCategory = categories.find(c => c.id === catId);
+    const categoryName = catId === "all" ? "جميع_الأقسام" : (selectedCategory ? selectedCategory.name.replace(/[\/\\?%*:|"<>]/g, "_") : "قسم");
+    const fileName = `تقرير_جرد_${categoryName}.pdf`;
+
+    const d = document.createElement("div");
+    d.style.cssText = "direction:rtl; font-family: 'Cairo', sans-serif; padding:5px; background:#fff; width:100%; color:#000;";
+    const catsToExport = catId === "all" ? categories : categories.filter(c => c.id === catId);
+
+    d.innerHTML = `
+      <div style="text-align:center; margin-bottom:10px;">
+        <h2 style="color:#000; margin:0; font-size:22px; font-weight:900; font-family:'Cairo', sans-serif;">تقرير جرد المستودع</h2>
+        <p style="font-size:14px; color:#000; margin-top:2px; margin-bottom:12px; font-weight:bold;">التاريخ : &nbsp;&nbsp; ${new Date().toLocaleString("en-GB")}</p>
+      </div>
+      ${catsToExport.map(c => {
+        const items = active.filter(x => x.categoryId === c.id);
+        if(!items.length) return '';
+        return `
+          <div style="margin-bottom:8px;">
+            <h3 style="margin-top:4px; margin-bottom:4px; color:#000; font-size:16px; font-weight:900; background:#e2e8f0; padding:4px 8px; border:1px solid #000;">${esc(c.name)}</h3>
+            <table style="width:100%; border-collapse:collapse; font-size:14px; font-family:'Cairo', sans-serif; table-layout: fixed; font-weight:bold; color:#000;">
+              <thead>
+                <tr style="background:#cbd5e1; color:#000">
+                  <th style="border:2px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; width:35px; font-weight:900;">#</th>
+                  <th style="border:2px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; font-weight:900;">اسم الصنف</th>
+                  <th style="border:2px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; width:80px; font-weight:900;">الكمية</th>
+                  <th style="border:2px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; width:65px; font-weight:900;">الوحدة</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map((x, idx) => `
+                  <tr>
+                    <td style="border:1px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; color:#000;">${idx+1}</td>
+                    <td style="border:1px solid #000; padding:8px 8px; text-align:center; vertical-align:middle; word-break:break-word; color:#000;">${esc(x.name)}</td>
+                    <td style="border:1px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; color:#000;">${x.qty}</td>
+                    <td style="border:1px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; color:#000;">${esc(x.unit||'عدد')}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }).join("")}
+    `;
+
+    html2pdf().set({
+      margin: 5,
+      filename: fileName, 
+      html2canvas: { scale: 3, useCORS: true }, 
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+    }).from(d).save().then(() => toast("تم تصدير PDF بنجاح"));
+  });
+};
+
+// واتساب
+$("waBtn").onclick = () => {
+  promptExportChoice(catId => {
+    let active = allItems.filter(x => !x.isDeleted);
+    if(catId !== "all") active = active.filter(x => x.categoryId === catId);
+    if(!active.length) return dialog("لا توجد بيانات للمشاركة", "تنبيه", "warning");
+
+    let text = `📦 *تقرير جرد المستودع*\n📅  ${new Date().toLocaleString("en-GB")}\n------------------------------\n`;
+    const catsToExport = catId === "all" ? categories : categories.filter(c => c.id === catId);
+
+    catsToExport.forEach(c => {
+      const items = active.filter(x => x.categoryId === c.id);
+      if(items.length) {
+        text += `\n🔹 *قسم ${c.name}:*\n`;
+        items.forEach((x, i) => { text += `${i+1}. ${x.name}: *${x.qty}* ${x.unit||''}\n`; });
+      }
+    });
+
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  });
+};
+
+$("globalSearchInput").oninput = () => {
+  const query = $("globalSearchInput").value.trim().toLowerCase();
+  if(!query) return $("globalSearchResults").classList.add("hidden");
+  $("globalSearchResults").classList.remove("hidden");
+
+  const active = allItems.filter(x => !x.isDeleted);
+  const matched = active.filter(x => {
+    const cat = categories.find(c => c.id === x.categoryId);
+    return x.name.toLowerCase().includes(query) || (cat && cat.name.toLowerCase().includes(query));
+  });
+
+  $("globalSearchTableBody").innerHTML = matched.map((x, idx) => {
+    const cat = categories.find(c => c.id === x.categoryId);
+    return `<tr><td class="p-1.5 text-center text-slate-400 font-bold text-[10px]">${idx+1}</td><td class="p-1.5 font-bold dark:text-slate-100 text-center" style="word-break: break-word;">${esc(x.name)}</td><td class="p-1.5 text-center"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-800">${esc(cat?cat.name:'عام')}</span></td><td class="p-1.5 text-center font-bold dark:text-slate-100">${Number(x.qty)||0} ${esc(x.unit||'')}</td></tr>`;
+  }).join("");
+
+  $("emptyGlobalSearch").classList.toggle("hidden", matched.length > 0);
+};
+
+function renderRecent() {
+  $("homeRecent").innerHTML = history.slice(0, 5).map(h => `<div class="py-1.5 flex justify-between items-center gap-2"><div><b class="dark:text-slate-100 text-[11px]">${esc(h.action)}</b> <span class="dark:text-slate-200 text-[11px]">${esc(h.name)}</span><p class="text-[9px] text-slate-400">${fmtTime(h.at)}</p></div><span class="text-[9px] px-1.5 py-0.5 bg-sky-100 text-sky-800 rounded font-bold">${esc(h.categoryName||"")}</span></div>`).join("") || `<p class="text-xs text-slate-400 text-center py-2">لا توجد عمليات</p>`;
+}
+
+function renderHistory() {
+  let arr = history;
+  if(historyFilter) arr = arr.filter(h => dayKey(h.at) === historyFilter);
+  $("historyList").innerHTML = arr.map(h => `<div class="p-2 flex gap-2 text-xs border-b border-sky-100 dark:border-slate-700"><div class="flex-1"><b class="dark:text-slate-100">${esc(h.action)}: ${esc(h.name)}</b><p class="text-[10px] text-slate-500 mt-0.5">القسم: ${esc(h.categoryName||"-")} · الكمية: ${Number(h.qty)||0} ${esc(h.unit||'')}</p><p class="text-[9px] text-slate-400 mt-0.5">${fmtTime(h.at)}</p></div></div>`).join("");
+  $("emptyHistory").classList.toggle("hidden", arr.length > 0);
+}
+
+$("historyDate").onchange = e => { historyFilter = e.target.value || null; renderHistory(); };
+$("todayHistoryBtn").onclick = () => { historyFilter = dayKey(now()); $("historyDate").value = historyFilter; renderHistory(); };
+$("clearHistoryFilter").onclick = () => { historyFilter = null; $("historyDate").value = ""; renderHistory(); };
+
+$("saveBulkBtn").onclick = async () => {
+  const catId = $("bulkCategorySelect").value;
+  if(!catId) return dialog("يرجى اختيار قسم أولاً!", "تنبيه", "warning");
+
+  const names = $("bulkInputText").value.split(/\n/).map(x => x.trim()).filter(Boolean);
+  if(!names.length) return dialog("لا توجد أسماء مضافة.", "تنبيه", "warning");
+
+  for (const name of names) {
+    const r = push(ref(db, "items"));
+    await set(r, { name, categoryId: catId, qty: 0, unit: "عدد", isDeleted: false, createdAt: now(), updatedAt: now() });
+  }
+
+  $("bulkInputText").value = "";
+  navigate("items", "جميع الأصناف");
+  toast(`تمت إضافة ${names.length} صنف بنجاح`);
+};
+
+// رفع الصور واستخراج النصوص Tesseract
+$("uploadImageTrigger").onclick = () => $("cameraInput").click();
+$("cameraInput").onchange = async e => {
+  const file = e.target.files[0];
+  if(!file) return;
+
+  $("ocrStatus").classList.remove("hidden");
+  try {
+    const result = await Tesseract.recognize(
+      file,
+      'ara+eng',
+      {
+        logger: m => {
+          if(m.status === 'recognizing text') {
+            const p = Math.round((m.progress || 0) * 100);
+            $("ocrStatus").innerHTML = `<i class="fas fa-spinner fa-spin ml-1"></i> جاري قراءة الصورة... (${p}%)`;
+          }
+        }
+      }
+    );
+
+    const text = result.data.text || "";
+    const cleanLines = text.split('\n')
+                           .map(x => x.trim())
+                           .filter(x => x.length > 0)
+                           .join('\n');
+
+    if (cleanLines) {
+      const currentVal = $("bulkInputText").value.trim();
+      $("bulkInputText").value = currentVal ? currentVal + "\n" + cleanLines : cleanLines;
+      toast("تم استخراج النص بالترتيب بنجاح");
+    } else {
+      toast("لم يتم العثور على نص واضح بالصورة", "warning");
+    }
+  } catch(err) {
+    console.error(err);
+    dialog("حدث خطأ أثناء قراءة الصورة، يرجى التأكد من وضوح الصورة وإعادة المحاولة.", "خطأ في القراءة", "error");
+  } finally {
+    $("ocrStatus").classList.add("hidden");
+    $("cameraInput").value = "";
+  }
+};
+</script>
+</body>
+</html>
