@@ -286,7 +286,6 @@ select.custom-select option {
     <div class="space-y-2" id="itemsCompactList"></div>
     <div id="loadMoreContainer" class="text-center py-3 hidden">
       <button id="loadMoreBtn" class="btn-3d-blue text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
-        <i class="fas fa-spinner fa-spin hidden ml-1" id="loadMoreSpinner"></i>
         <span>عرض المزيد (+30 صنف)</span>
       </button>
       <p id="displayedItemsCount" class="text-[10px] text-slate-400 mt-1.5 font-bold"></p>
@@ -329,6 +328,12 @@ select.custom-select option {
       <button id="clearHistoryBtn" class="bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-[10px] font-bold"><i class="fas fa-trash"></i> مسح السجل بالكامل</button>
     </div>
     <div id="historyList" class="divide-y divide-sky-100 dark:divide-slate-700"></div>
+    <div id="historyLoadMoreContainer" class="text-center py-3 hidden">
+      <button id="historyLoadMoreBtn" class="btn-3d-blue text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
+        <span>عرض المزيد (+30 عملية)</span>
+      </button>
+      <p id="displayedHistoryCount" class="text-[10px] text-slate-400 mt-1.5 font-bold"></p>
+    </div>
     <div id="emptyHistory" class="text-center py-6 text-slate-400 text-xs hidden">لا توجد عمليات مسجلة</div>
   </div>
 </section>
@@ -344,6 +349,12 @@ select.custom-select option {
       <button id="clearRecycleBtn" class="bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-[10px] font-bold"><i class="fas fa-trash"></i> تفريغ السلة</button>
     </div>
     <div id="recycleList" class="divide-y divide-sky-100 dark:divide-slate-700"></div>
+    <div id="recycleLoadMoreContainer" class="text-center py-3 hidden">
+      <button id="recycleLoadMoreBtn" class="btn-3d-blue text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
+        <span>عرض المزيد (+30 صنف)</span>
+      </button>
+      <p id="displayedRecycleCount" class="text-[10px] text-slate-400 mt-1.5 font-bold"></p>
+    </div>
     <div id="emptyRecycleState" class="text-center py-6 text-slate-400 text-xs hidden">السلة فارغة</div>
   </div>
 </section>
@@ -441,10 +452,6 @@ select.custom-select option {
           <input id="itemUnit" type="text" placeholder="عدد، كغ..." class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 bg-white dark:bg-slate-900 dark:text-slate-100">
         </div>
       </div>
-      <div class="admin-only">
-        <label class="font-bold block mb-1 dark:text-slate-200">التاريخ والوقت</label>
-        <input id="operationDateTime" type="datetime-local" class="w-full border border-sky-200 dark:border-slate-700 rounded-xl p-2 bg-white dark:bg-slate-900 dark:text-slate-100">
-      </div>
     </div>
 
     <div class="p-2.5 bg-sky-50 dark:bg-slate-900 flex gap-2 shrink-0">
@@ -540,11 +547,14 @@ let allItems = [], categories = [], history = [], workers = [], currentCategoryF
 let adminPin = "777";
 
 let displayedItemsLimit = 30;
+let displayedHistoryLimit = 30;
+let displayedRecycleLimit = 30;
 
 const $ = id => document.getElementById(id);
 const esc = v => String(v??"").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 const now = () => Date.now();
 const fmtTime = ts => new Date(ts).toLocaleString("en-GB", {dateStyle:"short", timeStyle:"short"});
+const getReportDate = () => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; };
 const dayKey = ts => new Date(ts).toISOString().slice(0,10);
 const localInputValue = ts => {
   const d = new Date(ts), p = n => String(n).padStart(2,"0");
@@ -749,6 +759,8 @@ $("closeBlockedModalBtn").onclick = () => {
 
 $("logoutBtn").onclick = () => {
   displayedItemsLimit = 30;
+  displayedHistoryLimit = 30;
+  displayedRecycleLimit = 30;
   $("loginOverlay").classList.remove("hidden");
 };
 
@@ -756,6 +768,8 @@ function navigate(page, title) {
   if (currentUserRole === 'worker' && page !== 'items' && page !== 'reports') return;
   
   displayedItemsLimit = 30;
+  displayedHistoryLimit = 30;
+  displayedRecycleLimit = 30;
   
   document.querySelectorAll(".page-section").forEach(x => x.classList.remove("active"));
   $(page).classList.add("active");
@@ -788,7 +802,7 @@ document.querySelectorAll("[data-page]").forEach(b => b.addEventListener("click"
 }));
 
 $("currentDateDisplay").textContent = new Date().toLocaleDateString("ar-EG", {weekday:"long", year:"numeric", month:"long", day:"numeric"});
-$("reportDate").textContent = fmtTime(now());
+$("reportDate").textContent = getReportDate();
 
 $("openAddCategoryModalBtn").onclick = () => {
   $("categoryModalTitle").textContent = "قسم جديد";
@@ -843,7 +857,6 @@ function openModal(item = null) {
   if(item?.categoryId) $("itemCategorySelect").value = item.categoryId;
   else if(currentCategoryFilter !== "all") $("itemCategorySelect").value = currentCategoryFilter;
 
-  $("operationDateTime").value = localInputValue(item?.updatedAt || now());
   $("addModal").classList.remove("hidden");
   $("addModal").classList.add("flex");
 }
@@ -873,8 +886,7 @@ $("saveItemBtn").onclick = async () => {
   const categoryId = $("itemCategorySelect").value;
   const qty = Math.max(0, Number($("itemQty").value) || 0);
   const unit = $("itemUnit").value.trim() || "عدد";
-  const dt = $("operationDateTime").value;
-  const at = dt ? new Date(dt).getTime() : now();
+  const at = now();
 
   if(!name) return dialog("يرجى إدخال اسم الصنف", "بيانات ناقصة", "warning");
 
@@ -1040,9 +1052,13 @@ function renderItemsCompact() {
     $("loadMoreContainer").classList.add("hidden");
   }
 
+  // سلة المحذوفات
   const deleted = allItems.filter(x => x.isDeleted);
   $("deletedCount").textContent = deleted.length;
-  $("recycleList").innerHTML = deleted.map(x => `
+  
+  const slicedDeleted = deleted.slice(0, displayedRecycleLimit);
+  
+  $("recycleList").innerHTML = slicedDeleted.map(x => `
     <div class="p-2 flex justify-between items-center text-xs">
       <div>
         <b class="line-through text-slate-500">${esc(x.name)}</b>
@@ -1054,11 +1070,24 @@ function renderItemsCompact() {
       </div>
     </div>
   `).join("");
+  
+  if (deleted.length > displayedRecycleLimit) {
+    $("recycleLoadMoreContainer").classList.remove("hidden");
+    $("displayedRecycleCount").textContent = `تم عرض ${slicedDeleted.length} من إجمالي ${deleted.length} صنف`;
+  } else {
+    $("recycleLoadMoreContainer").classList.add("hidden");
+  }
+  
   $("emptyRecycleState").classList.toggle("hidden", deleted.length > 0);
 }
 
 $("loadMoreBtn").onclick = () => {
   displayedItemsLimit += 30;
+  renderItemsCompact();
+};
+
+$("recycleLoadMoreBtn").onclick = () => {
+  displayedRecycleLimit += 30;
   renderItemsCompact();
 };
 
@@ -1171,7 +1200,7 @@ $("btnPrint").onclick = () => {
       </head>
       <body>
         <h2>تقرير جرد المستودع</h2>
-        <p class="date">التاريخ : &nbsp;&nbsp; ${new Date().toLocaleString("en-GB")}</p>
+        <p class="date">التاريخ : &nbsp;&nbsp; ${getReportDate()}</p>
         ${catsToExport.map(c => {
           const items = active.filter(x => x.categoryId === c.id);
           if(!items.length) return '';
@@ -1234,7 +1263,7 @@ $("excelBtn").onclick = () => {
     catsToExport.forEach(c => {
       const items = active.filter(x => x.categoryId === c.id);
       if(items.length) {
-        const dateStr = new Date().toLocaleString("en-GB");
+        const dateStr = getReportDate();
         const sheetData = [
           ["تقرير جرد المستودع", "", "", ""],
           ["التاريخ :  " + dateStr, "", "", ""],
@@ -1330,32 +1359,32 @@ $("pdfBtn").onclick = () => {
     const catsToExport = catId === "all" ? categories : categories.filter(c => c.id === catId);
 
     d.innerHTML = `
-      <div style="text-align:center; margin-bottom:10px;">
-        <h2 style="color:#000; margin:0; font-size:22px; font-weight:900; font-family:'Cairo', sans-serif;">تقرير جرد المستودع</h2>
-        <p style="font-size:14px; color:#000; margin-top:2px; margin-bottom:12px; font-weight:bold;">التاريخ : &nbsp;&nbsp; ${new Date().toLocaleString("en-GB")}</p>
+      <div style="text-align:center; margin-bottom:8px;">
+        <h2 style="color:#000; margin:0; font-size:18px; font-weight:900; font-family:'Cairo', sans-serif;">تقرير جرد المستودع</h2>
+        <p style="font-size:11px; color:#000; margin-top:2px; margin-bottom:10px; font-weight:bold;">التاريخ : &nbsp;&nbsp; ${getReportDate()}</p>
       </div>
       ${catsToExport.map(c => {
         const items = active.filter(x => x.categoryId === c.id);
         if(!items.length) return '';
         return `
-          <div style="margin-bottom:8px;">
-            <h3 style="margin-top:4px; margin-bottom:4px; color:#000; font-size:16px; font-weight:900; background:#e2e8f0; padding:4px 8px; border:1px solid #000;">${esc(c.name)}</h3>
-            <table style="width:100%; border-collapse:collapse; font-size:14px; font-family:'Cairo', sans-serif; table-layout: fixed; font-weight:bold; color:#000;">
+          <div style="margin-bottom:6px;">
+            <h3 style="margin-top:2px; margin-bottom:4px; color:#000; font-size:13px; font-weight:900; background:#e2e8f0; padding:2px 6px; border:1px solid #000;">${esc(c.name)}</h3>
+            <table style="width:100%; border-collapse:collapse; font-size:11px; font-family:'Cairo', sans-serif; table-layout: fixed; font-weight:bold; color:#000;">
               <thead>
                 <tr style="background:#cbd5e1; color:#000">
-                  <th style="border:2px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; width:35px; font-weight:900;">#</th>
-                  <th style="border:2px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; font-weight:900;">اسم الصنف</th>
-                  <th style="border:2px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; width:80px; font-weight:900;">الكمية</th>
-                  <th style="border:2px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; width:65px; font-weight:900;">الوحدة</th>
+                  <th style="border:2px solid #000; padding:4px 2px; text-align:center; vertical-align:middle; width:35px; font-weight:900;">#</th>
+                  <th style="border:2px solid #000; padding:4px 2px; text-align:center; vertical-align:middle; font-weight:900;">اسم الصنف</th>
+                  <th style="border:2px solid #000; padding:4px 2px; text-align:center; vertical-align:middle; width:80px; font-weight:900;">الكمية</th>
+                  <th style="border:2px solid #000; padding:4px 2px; text-align:center; vertical-align:middle; width:65px; font-weight:900;">الوحدة</th>
                 </tr>
               </thead>
               <tbody>
                 ${items.map((x, idx) => `
                   <tr>
-                    <td style="border:1px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; color:#000;">${idx+1}</td>
-                    <td style="border:1px solid #000; padding:8px 8px; text-align:center; vertical-align:middle; word-break:break-word; color:#000;">${esc(x.name)}</td>
-                    <td style="border:1px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; color:#000;">${x.qty}</td>
-                    <td style="border:1px solid #000; padding:8px 4px; text-align:center; vertical-align:middle; color:#000;">${esc(x.unit||'عدد')}</td>
+                    <td style="border:1px solid #000; padding:4px 2px; text-align:center; vertical-align:middle; color:#000;">${idx+1}</td>
+                    <td style="border:1px solid #000; padding:4px 4px; text-align:center; vertical-align:middle; word-break:break-word; color:#000;">${esc(x.name)}</td>
+                    <td style="border:1px solid #000; padding:4px 2px; text-align:center; vertical-align:middle; color:#000;">${x.qty}</td>
+                    <td style="border:1px solid #000; padding:4px 2px; text-align:center; vertical-align:middle; color:#000;">${esc(x.unit||'عدد')}</td>
                   </tr>
                 `).join("")}
               </tbody>
@@ -1381,7 +1410,7 @@ $("waBtn").onclick = () => {
     if(catId !== "all") active = active.filter(x => x.categoryId === catId);
     if(!active.length) return dialog("لا توجد بيانات للمشاركة", "تنبيه", "warning");
 
-    let text = `📦 *تقرير جرد المستودع*\n📅  ${new Date().toLocaleString("en-GB")}\n------------------------------\n`;
+    let text = `📦 *تقرير جرد المستودع*\n📅  ${getReportDate()}\n------------------------------\n`;
     const catsToExport = catId === "all" ? categories : categories.filter(c => c.id === catId);
 
     catsToExport.forEach(c => {
@@ -1422,13 +1451,29 @@ function renderRecent() {
 function renderHistory() {
   let arr = history;
   if(historyFilter) arr = arr.filter(h => dayKey(h.at) === historyFilter);
-  $("historyList").innerHTML = arr.map(h => `<div class="p-2 flex gap-2 text-xs border-b border-sky-100 dark:border-slate-700"><div class="flex-1"><b class="dark:text-slate-100">${esc(h.action)}: ${esc(h.name)}</b><p class="text-[10px] text-slate-500 mt-0.5">القسم: ${esc(h.categoryName||"-")} · الكمية: ${Number(h.qty)||0} ${esc(h.unit||'')}</p><p class="text-[9px] text-slate-400 mt-0.5">${fmtTime(h.at)}</p></div></div>`).join("");
+  
+  const slicedHistory = arr.slice(0, displayedHistoryLimit);
+  
+  $("historyList").innerHTML = slicedHistory.map(h => `<div class="p-2 flex gap-2 text-xs border-b border-sky-100 dark:border-slate-700"><div class="flex-1"><b class="dark:text-slate-100">${esc(h.action)}: ${esc(h.name)}</b><p class="text-[10px] text-slate-500 mt-0.5">القسم: ${esc(h.categoryName||"-")} · الكمية: ${Number(h.qty)||0} ${esc(h.unit||'')}</p><p class="text-[9px] text-slate-400 mt-0.5">${fmtTime(h.at)}</p></div></div>`).join("");
+  
+  if (arr.length > displayedHistoryLimit) {
+    $("historyLoadMoreContainer").classList.remove("hidden");
+    $("displayedHistoryCount").textContent = `تم عرض ${slicedHistory.length} من إجمالي ${arr.length} عملية`;
+  } else {
+    $("historyLoadMoreContainer").classList.add("hidden");
+  }
+  
   $("emptyHistory").classList.toggle("hidden", arr.length > 0);
 }
 
-$("historyDate").onchange = e => { historyFilter = e.target.value || null; renderHistory(); };
-$("todayHistoryBtn").onclick = () => { historyFilter = dayKey(now()); $("historyDate").value = historyFilter; renderHistory(); };
-$("clearHistoryFilter").onclick = () => { historyFilter = null; $("historyDate").value = ""; renderHistory(); };
+$("historyLoadMoreBtn").onclick = () => {
+  displayedHistoryLimit += 30;
+  renderHistory();
+};
+
+$("historyDate").onchange = e => { historyFilter = e.target.value || null; displayedHistoryLimit = 30; renderHistory(); };
+$("todayHistoryBtn").onclick = () => { historyFilter = dayKey(now()); $("historyDate").value = historyFilter; displayedHistoryLimit = 30; renderHistory(); };
+$("clearHistoryFilter").onclick = () => { historyFilter = null; $("historyDate").value = ""; displayedHistoryLimit = 30; renderHistory(); };
 
 $("saveBulkBtn").onclick = async () => {
   const catId = $("bulkCategorySelect").value;
